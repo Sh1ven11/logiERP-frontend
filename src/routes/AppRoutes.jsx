@@ -4,10 +4,10 @@ import DashboardPage from "../pages/Dashboard/DashboardPage.jsx";
 import CustomersPage from "../pages/Functions/CustomersPage.jsx";
 import ConsignmentsPage from "../pages/Functions/ConsignmentsPage.jsx";
 import LorryHirePage from "../pages/Functions/LorryHirePage.jsx";
-
+import BrokersPage from "../pages/Functions/BrokersPage.jsx";
 import ProtectedRoute from "./ProtectedRoute.jsx";
 import PublicRoute from "./PublicRoute.jsx";
-
+import BillsPage from "../pages/Functions/BillsPage.jsx";
 export default function AppRoutes() {
   return (
     <BrowserRouter>
@@ -34,8 +34,11 @@ export default function AppRoutes() {
         />
         <Route path="/" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
         <Route path="/customers" element={<ProtectedRoute><CustomersPage /></ProtectedRoute>} />
+        <Route path="/brokers" element={<ProtectedRoute><BrokersPage /></ProtectedRoute>} />
+
         <Route path="/consignments" element={<ProtectedRoute><ConsignmentsPage /></ProtectedRoute>} />
         <Route path="/lorry-hire" element={<ProtectedRoute><LorryHirePage /></ProtectedRoute>} />
+        <Route path="/bills" element={<ProtectedRoute><BillsPage /></ProtectedRoute>} />
 
 
       </Routes>
