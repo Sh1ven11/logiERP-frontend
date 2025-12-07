@@ -1,52 +1,77 @@
 import { useContext } from "react";
 import { AuthContext } from "../context/AuthContext.jsx";
+import { SettingsContext } from "../context/SettingsContext.jsx";
 
 export default function Navbar() {
   const { user } = useContext(AuthContext);
-
-  const companies = ["KTPL", "MLPL"];
-  const branches = ["Mumbai", "Pune", "Hyderabad"];
-  const financialYears = ["2024-2025", "2025-2026"];
+  const {
+    companies,
+    branches,
+    financialYears,
+    selectedCompany,
+    selectedBranch,
+    selectedFinancialYear,
+    setSelectedCompany,
+    setSelectedBranch,
+    setSelectedFinancialYear,
+  } = useContext(SettingsContext);
 
   const today = new Date().toLocaleDateString();
 
   return (
     <div className="w-full bg-white shadow-md px-6 py-4 flex items-center justify-between">
-      {/* Left side selectors */}
-      <div className="flex items-center gap-6">
+      {/* Left group */}
+      <div className="flex items-center gap-4">
 
-        {/* Company */}
-        <select className="border rounded-md px-3 py-2">
-          {companies.map((c) => (
-            <option key={c}>{c}</option>
+        {/* Company dropdown */}
+        <select
+          className="border px-3 py-2 rounded-md"
+          value={selectedCompany?.id || ""}
+          onChange={(e) => {
+            const company = companies.find(c => c.id === Number(e.target.value));
+            setSelectedCompany(company);
+          }}
+        >
+          {companies.map(c => (
+            <option key={c.id} value={c.id}>{c.name}</option>
           ))}
         </select>
 
-        {/* Branch */}
-        <select className="border rounded-md px-3 py-2">
-          {branches.map((b) => (
-            <option key={b}>{b}</option>
+        {/* Branch dropdown */}
+        <select
+          className="border px-3 py-2 rounded-md"
+          value={selectedBranch?.id || ""}
+          onChange={(e) => {
+            const branch = branches.find(b => b.id === Number(e.target.value));
+            setSelectedBranch(branch);
+          }}
+        >
+          {branches.map(b => (
+            <option key={b.id} value={b.id}>{b.name}</option>
           ))}
         </select>
 
         {/* Financial Year */}
-        <select className="border rounded-md px-3 py-2">
-          {financialYears.map((fy) => (
-            <option key={fy}>{fy}</option>
+        <select
+          className="border px-3 py-2 rounded-md"
+          value={selectedFinancialYear?.id || ""}
+          onChange={(e) => {
+            const fy = financialYears.find(f => f.id === Number(e.target.value));
+            setSelectedFinancialYear(fy);
+          }}
+        >
+          {financialYears.map(fy => (
+            <option key={fy.id} value={fy.id}>{fy.yearLabel}</option>
           ))}
         </select>
 
-        {/* Current Date */}
-        <span className="text-gray-600 font-medium">
-          {today}
-        </span>
+        {/* Date */}
+        <span className="text-gray-700">{today}</span>
       </div>
 
-      {/* Right side: username */}
-      <div className="flex items-center gap-4">
-        <span className="font-semibold text-gray-700">
-          {user?.username || "User"}
-        </span>
+      {/* Username */}
+      <div className="font-semibold text-gray-700">
+        {user?.username}
       </div>
     </div>
   );

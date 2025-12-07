@@ -1,6 +1,6 @@
 import { useState, useContext } from "react";
 import { AuthContext } from "../../context/AuthContext";
-import { loginApi } from "../../api/authApi";
+import { loginApi } from "../../api/loginApi";
 import "./Login.css";
 
 export default function LoginPage() {
@@ -9,17 +9,25 @@ export default function LoginPage() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
+    setLoading(true);
 
     try {
       const data = await loginApi(username, password);
+
+      // data → { access_token, refresh_token }
       login(data);
-      window.location.href = "/";
+
+      // redirect to home/dashboard
+      window.location.replace("/");
     } catch (err) {
       setError("Invalid username or password");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -33,6 +41,7 @@ export default function LoginPage() {
           placeholder="Username"
           value={username}
           onChange={(e) => setUsername(e.target.value)}
+          required
         />
 
         <input
@@ -40,11 +49,14 @@ export default function LoginPage() {
           placeholder="Password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
+          required
         />
 
         {error && <p className="error">{error}</p>}
 
-        <button type="submit">Login</button>
+        <button type="submit" disabled={loading}>
+          {loading ? "Logging in..." : "Login"}
+        </button>
       </form>
     </div>
   );

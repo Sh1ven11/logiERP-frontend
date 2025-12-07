@@ -14,31 +14,14 @@ export default function AppRoutes() {
       <Routes>
 
         {/* Public route — redirect to dashboard if already logged in */}
-        <Route
-          path="/login"
-          element={
-            <PublicRoute>
-              <LoginPage />
-            </PublicRoute>
-          }
-        />
-
-        {/* Protected route — must be logged in */}
-        <Route
-          path="/"
-          element={
-            <ProtectedRoute>
-              <DashboardPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route path="/" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
+        <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>}/>
         <Route path="/customers" element={<ProtectedRoute><CustomersPage /></ProtectedRoute>} />
         <Route path="/brokers" element={<ProtectedRoute><BrokersPage /></ProtectedRoute>} />
 
         <Route path="/consignments" element={<ProtectedRoute><ConsignmentsPage /></ProtectedRoute>} />
         <Route path="/lorry-hire" element={<ProtectedRoute><LorryHirePage /></ProtectedRoute>} />
         <Route path="/bills" element={<ProtectedRoute><BillsPage /></ProtectedRoute>} />
+        <Route path="/" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
 
 
       </Routes>
