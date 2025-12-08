@@ -46,8 +46,13 @@ export const SettingsProvider = ({ children }) => {
 
     axiosClient
       .get(`/companies/branches/${selectedCompany.id}`)
-      .then((res) => setBranches(res.data))
+      .then((res) => {
+        setBranches(res.data);
+        if(res.data.length > 0){
+        setSelectedBranch(res.data[0]);
+      }})
       .catch((err) => console.error("Branches fetch error:", err));
+      
   }, [selectedCompany]);
 
   // -----------------------------
@@ -59,8 +64,13 @@ export const SettingsProvider = ({ children }) => {
 
     axiosClient
       .get(`/companies/financial-years/${selectedCompany.id}`)
-      .then((res) => setFinancialYears(res.data))
+      .then((res) => {
+        setFinancialYears(res.data);
+      if(res.data.length > 0){
+        setSelectedFinancialYear(res.data[0]);
+      }})
       .catch((err) => console.error("FY fetch error:", err));
+      
   }, [selectedCompany]);
 
   return (
