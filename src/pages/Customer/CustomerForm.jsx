@@ -1,10 +1,8 @@
 import { useState, useContext, useEffect } from "react";
 import { SettingsContext } from "../../context/SettingsContext.jsx";
-import { CustomerContext } from "../../context/CustomerContext.jsx";
 
-const CustomerForm = ({ customerId, onClose }) => {
+const CustomerForm = ({ customerId, onClose, createCustomer, updateCustomer, customers, fetchCustomers }) => {
   const { selectedCompany, selectedBranch } = useContext(SettingsContext);
-  const { customers, createCustomer, updateCustomer, fetchCustomers } = useContext(CustomerContext);
   const [form, setForm] = useState({ 
     companyCode: "",
     companyName: "",
@@ -64,27 +62,14 @@ const CustomerForm = ({ customerId, onClose }) => {
         companyId: companyIdNum,
         branchId: selectedBranch?.id || null,
       };
-      console.log("=== FORM SUBMIT START ===");
-      console.log("Form data to send:", dataToSend);
-      console.log("Selected Company:", selectedCompany);
-      console.log("Selected Branch:", selectedBranch);
       if (customerId) {
-        console.log("Updating customer:", customerId);
         await updateCustomer(customerId, dataToSend);
       } else {
-        console.log("Creating new customer...");
         const newCustomer = await createCustomer(dataToSend);
-        console.log("Customer created successfully:", newCustomer);
-        console.log("Fetching customers for company:", companyIdNum);
         await fetchCustomers(companyIdNum);
       }
-      console.log("=== FORM SUBMIT SUCCESS ===");
       onClose();
     } catch (err) {
-      console.error("=== FORM SUBMIT ERROR ===");
-      console.error("Full error object:", err);
-      console.error("Error message:", err.message);
-      console.error("Error response:", err.response?.data);
       setError(err.response?.data?.message || err.message || "Failed to save customer");
     } finally {
       setLoading(false);

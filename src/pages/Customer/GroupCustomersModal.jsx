@@ -1,8 +1,6 @@
-import { useState, useContext, useEffect } from "react";
-import { CustomerContext } from "../../context/CustomerContext.jsx";
+import { useState, useEffect } from "react";
 
-const GroupCustomersModal = ({ groupId, onClose }) => {
-  const { customers, addCustomersToGroup } = useContext(CustomerContext);
+const GroupCustomersModal = ({ groupId, onClose, customers, addCustomersToGroup }) => {
   const [selected, setSelected] = useState([]);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
@@ -43,7 +41,7 @@ const GroupCustomersModal = ({ groupId, onClose }) => {
       await addCustomersToGroup(groupId, selected);
       onClose();
     } catch (err) {
-      console.error(err);
+      // Handle error silently
     } finally {
       setLoading(false);
     }

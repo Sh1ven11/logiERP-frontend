@@ -1,10 +1,11 @@
-import { useState, useContext } from "react";
-import { CustomerContext } from "../../context/CustomerContext.jsx";
+import { useState } from "react";
 import CustomerForm from "./CustomerForm.jsx";
 
-const CustomerList = () => {
-  const { customers, loading, deleteCustomer } = useContext(CustomerContext);
+const ITEMS_PER_PAGE = 10;
+
+const CustomerList = ({ customers, loading, deleteCustomer }) => {
   const [search, setSearch] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
   const [editId, setEditId] = useState(null);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
   const [hoveredCustomerId, setHoveredCustomerId] = useState(null);
@@ -16,6 +17,18 @@ const CustomerList = () => {
       c.companyCode?.toLowerCase().includes(search.toLowerCase()) ||
       c.billName?.toLowerCase().includes(search.toLowerCase())
   );
+
+  // Pagination calculations
+  const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE);
+  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+  const endIndex = startIndex + ITEMS_PER_PAGE;
+  const paginatedCustomers = filtered.slice(startIndex, endIndex);
+
+  // Reset to page 1 when search changes
+  const handleSearch = (value) => {
+    setSearch(value);
+    setCurrentPage(1);
+  };
 
   if (editId) {
     return <CustomerForm customerId={editId} onClose={() => setEditId(null)} />;
@@ -31,7 +44,7 @@ const CustomerList = () => {
         await deleteCustomer(deleteConfirm.id);
         setDeleteConfirm(null);
       } catch (err) {
-        console.error("Delete failed:", err);
+        // Handle error silently
       }
     }
   };
@@ -57,7 +70,7 @@ const CustomerList = () => {
             type="text"
             placeholder="Search by company name, code, or bill name..."
             value={search}
-            onChange={e => setSearch(e.target.value)}
+            onChange={e => handleSearch(e.target.value)}
             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
@@ -74,7 +87,7 @@ const CustomerList = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
-              {filtered.map(customer => (
+              {paginatedCustomers.map(customer => (
                 <tr 
                   key={customer.id} 
                   className="hover:bg-gray-50 transition cursor-pointer"
@@ -111,6 +124,55 @@ const CustomerList = () => {
             <div className="text-center py-8 text-gray-500">No customers found</div>
           )}
         </div>
+
+        {/* Pagination Controls */}
+        {filtered.length > 0 && (
+          <div className="mt-4 flex items-center justify-center gap-1">
+            <button
+              onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+              disabled={currentPage === 1}
+              className="px-2 py-1 text-sm disabled:opacity-30 disabled:cursor-not-allowed transition"
+              title="Previous page"
+            >
+              ❮
+            </button>
+            <div className="flex items-center gap-1">
+              {Array.from({ length: Math.min(3, totalPages) }, (_, i) => {
+                let page;
+                if (totalPages <= 3) {
+                  page = i + 1;
+                } else if (currentPage <= 2) {
+                  page = i + 1;
+                } else if (currentPage >= totalPages - 1) {
+                  page = totalPages - 2 + i;
+                } else {
+                  page = currentPage - 1 + i;
+                }
+                return page;
+              }).map(page => (
+                <button
+                  key={page}
+                  onClick={() => setCurrentPage(page)}
+                  className={`px-2 py-1 rounded-full font-medium text-xs transition ${
+                    currentPage === page
+                      ? "bg-blue-600 text-white"
+                      : "bg-white text-gray-600 border border-gray-200 hover:border-gray-300"
+                  }`}
+                >
+                  {page}
+                </button>
+              ))}
+            </div>
+            <button
+              onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+              disabled={currentPage === totalPages}
+              className="px-2 py-1 text-sm disabled:opacity-30 disabled:cursor-not-allowed transition"
+              title="Next page"
+            >
+              ❯
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Customer Details Hover Popup */}

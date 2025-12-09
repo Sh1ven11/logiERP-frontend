@@ -1,10 +1,8 @@
 import { useState, useContext } from "react";
 import { SettingsContext } from "../../context/SettingsContext.jsx";
-import { CustomerContext } from "../../context/CustomerContext.jsx";
 
-const GroupForm = ({ onClose }) => {
+const GroupForm = ({ onClose, createGroup }) => {
   const { selectedCompany } = useContext(SettingsContext);
-  const { createGroup } = useContext(CustomerContext);
   const [name, setName] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -15,7 +13,7 @@ const GroupForm = ({ onClose }) => {
       await createGroup({ name, companyId: selectedCompany?.id });
       onClose();
     } catch (err) {
-      console.error(err);
+      // Handle error silently
     } finally {
       setLoading(false);
     }

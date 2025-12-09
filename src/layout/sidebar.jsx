@@ -1,4 +1,4 @@
-import { useState, useContext } from "react";
+import { useState, useContext, useEffect } from "react";
 import { NavLink } from "react-router-dom";
 import { AuthContext } from "../context/AuthContext.jsx";
 
@@ -20,9 +20,24 @@ export default function Sidebar() {
   const { logout } = useContext(AuthContext);
 
   const [collapsed, setCollapsed] = useState(false);
-  const [openMenu, setOpenMenu] = useState({
-    logistics: false,
+  
+  // Initialize from localStorage
+  const [openMenu, setOpenMenu] = useState(() => {
+    const saved = localStorage.getItem("sidebarMenuState");
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (err) {
+        return { logistics: false };
+      }
+    }
+    return { logistics: false };
   });
+
+  // Save menu state to localStorage whenever it changes
+  useEffect(() => {
+    localStorage.setItem("sidebarMenuState", JSON.stringify(openMenu));
+  }, [openMenu]);
 
   const toggleDropdown = (key) => {
     setOpenMenu((prev) => ({ ...prev, [key]: !prev[key] }));
@@ -40,6 +55,12 @@ export default function Sidebar() {
     { name: "Bills", path: "/bills", icon: <Package size={16} /> },
   ];
 
+  // Check if current location matches any logistics route
+  const isLogisticsActive = () => {
+    const currentPath = window.location.pathname;
+    return logisticsMenu.some(item => currentPath.startsWith(item.path));
+  };
+
   return (
     <div
       className={`h-screen bg-gray-900 text-white flex flex-col border-r border-gray-800 transition-all duration-300 overflow-y-auto relative z-50 ${
@@ -50,10 +71,6 @@ export default function Sidebar() {
       <button
         onClick={() => {
           setCollapsed(!collapsed);
-          if (collapsed === false) {
-            // if collapsing, close all dropdowns
-            setOpenMenu({ logistics: false });
-          }
         }}
         className="p-3 hover:bg-gray-800 border-b border-gray-800 flex justify-center"
       >
@@ -81,8 +98,8 @@ export default function Sidebar() {
         <div className="mt-4">
           <button
             onClick={() => toggleDropdown("logistics")}
-            className={`w-full flex items-center justify-between p-3 hover:bg-gray-800 rounded-md transition ${
-              openMenu.logistics ? "bg-gray-800" : ""
+            className={`w-full flex items-center justify-between p-3 rounded-md transition text-gray-300 hover:text-white hover:bg-gray-800 ${
+              openMenu.logistics ? "bg-gray-800 text-white" : ""
             }`}
           >
             <div className="flex items-center gap-3">

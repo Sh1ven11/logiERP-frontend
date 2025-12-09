@@ -52,6 +52,9 @@ export const AuthProvider = ({ children }) => {
     const decoded = jwtDecode(data.access_token);
     localStorage.setItem("userId", decoded.sub);
 
+    // Reset sidebar menu state on login
+    localStorage.removeItem("sidebarMenuState");
+
     setUser({
       id: decoded.sub,
       username: decoded.username,
@@ -60,6 +63,8 @@ export const AuthProvider = ({ children }) => {
 
   // LOGOUT
   const logout = () => {
+    // Clear sidebar menu state specifically so it resets on next login
+    localStorage.removeItem("sidebarMenuState");
     localStorage.clear();
     setUser(null);
   };

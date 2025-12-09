@@ -1,9 +1,7 @@
-import { useState, useContext } from "react";
-import { CustomerContext } from "../../context/CustomerContext.jsx";
+import { useState } from "react";
 import GroupCustomersModal from "./GroupCustomersModal.jsx";
 
-const GroupList = () => {
-  const { groups, loading, deleteGroup } = useContext(CustomerContext);
+const GroupList = ({ groups, loading, deleteGroup, addCustomersToGroup, customers }) => {
   const [search, setSearch] = useState("");
   const [selectedGroup, setSelectedGroup] = useState(null);
 
@@ -57,6 +55,8 @@ const GroupList = () => {
         <GroupCustomersModal
           groupId={selectedGroup}
           onClose={() => setSelectedGroup(null)}
+          customers={customers}
+          addCustomersToGroup={addCustomersToGroup}
         />
       )}
     </div>
