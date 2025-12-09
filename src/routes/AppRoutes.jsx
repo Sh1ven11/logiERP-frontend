@@ -3,12 +3,12 @@ import LoginPage from "../pages/Login/LoginPage.jsx";
 import DashboardPage from "../pages/Dashboard/DashboardPage.jsx";
 //import CustomersPage from "../pages/Functions/CustomersPage.jsx";
 import ConsignmentsPage from "../pages/Functions/ConsignmentsPage.jsx";
-import LorryHireList from "../pages/Functions/LorryHirePage/LorryPageList.jsx";
+import LorryHireList from "../pages/LorryHirePage/LorryPageList.jsx";
 import BrokersPage from "../pages/Functions/BrokersPage.jsx";
 import ProtectedRoute from "./ProtectedRoute.jsx";
 import PublicRoute from "./PublicRoute.jsx";
 import BillsPage from "../pages/Functions/BillsPage.jsx";
-import LorryHireCreate from "../pages/Functions/LorryHirePage/LorryHireCreate.jsx";
+import LorryHireCreate from "../pages/LorryHirePage/LorryHireCreate.jsx";
 import Customer from "../pages/Customer/customer.jsx";
 export default function AppRoutes() {
   return (
