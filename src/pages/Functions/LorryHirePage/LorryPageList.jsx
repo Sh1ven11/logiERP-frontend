@@ -92,7 +92,7 @@ export default function LorryHireList() {
 
                 <td className="border p-2 flex gap-3">
                   <button
-                    className="text-blue-600 hover:underline"
+                    className="hover:underline"
                     onClick={() => navigate(`/lorry-hire/edit/${c.id}`)}
                   >
                     Edit

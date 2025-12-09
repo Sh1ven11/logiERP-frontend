@@ -9,17 +9,21 @@ import {
   getLorryBrokers,
   getDestinations,
 } from "../../../api/lorryHireApi.js";
+
 import Autocomplete from "../../../components/Autocomplete.jsx";
+import ConsignmentSelector from "../../../components/ConsignSelector.jsx";   // ✅ NEW COMPONENT
 import { useParams, useNavigate } from "react-router-dom";
 
 export default function CreateLorryHire() {
-  const { selectedCompany, selectedBranch, selectedFinancialYear } = useContext(SettingsContext);
+  const { selectedCompany, selectedBranch, selectedFinancialYear } =
+    useContext(SettingsContext);
+
   const { id } = useParams();
   const navigate = useNavigate();
 
   const isEditMode = !!id;
+  const today = new Date().toISOString().substring(0, 10);
 
-  // Guard while settings load
   if (!selectedCompany || !selectedBranch || !selectedFinancialYear) {
     return (
       <MainLayout>
@@ -34,8 +38,8 @@ export default function CreateLorryHire() {
 
   const [form, setForm] = useState({
     challanNumber: "",
-    challanDate: "",
-    lorryHireDate: "",
+    challanDate: today,
+    lorryHireDate: today,
     vehicleNo: "",
     slipNo: "",
     remarks: "",
@@ -55,7 +59,9 @@ export default function CreateLorryHire() {
     gstAmount: "",
   });
 
-  // Fetch master data
+  const [selectedConsignments, setSelectedConsignments] = useState([]);
+
+  // LOAD MASTER DATA
   useEffect(() => {
     if (!selectedCompany) return;
 
@@ -64,15 +70,15 @@ export default function CreateLorryHire() {
     getDestinations().then((res) => setDestinations(res.data || []));
   }, [selectedCompany]);
 
-  // Load existing challan if editing
+  // LOAD EXISTING CHALLAN (EDIT MODE)
   useEffect(() => {
     if (!isEditMode) return;
 
     getLorryHire(id).then((data) => {
       setForm({
         challanNumber: data.challanNumber || "",
-        challanDate: data.challanDate?.substring(0, 10) || "",
-        lorryHireDate: data.lorryHireDate?.substring(0, 10) || "",
+        challanDate: data.challanDate?.substring(0, 10) || today,
+        lorryHireDate: data.lorryHireDate?.substring(0, 10) || today,
         vehicleNo: data.vehicleNo || "",
         slipNo: data.slipNo || "",
         remarks: data.remarks || "",
@@ -91,24 +97,20 @@ export default function CreateLorryHire() {
         gstApplicable: data.gstApplicable || false,
         gstAmount: data.gstAmount || "",
       });
+
+      // selected consignments from backend
+      setSelectedConsignments(data.consignments || []);
     });
   }, [id, isEditMode]);
 
-  // Generic handler
+  // FORM HANDLER
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
-    setForm({
-      ...form,
-      [name]: type === "checkbox" ? checked : value,
-    });
+    setForm({ ...form, [name]: type === "checkbox" ? checked : value });
   };
-
-  // Submit handler
-  const handleView = () => {
-    navigate("/lorry-hire");
-  }
   const handleSubmit = async () => {
-    const numericFields = [
+    // 1. Identify all fields that must be numbers/IDs.
+    const fieldsToClean = [
       "lorryOwnerId",
       "brokerId",
       "destinationId",
@@ -126,15 +128,23 @@ export default function CreateLorryHire() {
 
     const cleaned = { ...form };
 
-    numericFields.forEach((field) => {
-      cleaned[field] = cleaned[field] === "" ? undefined : Number(cleaned[field]);
+    // 2. Clean and convert the fields
+    fieldsToClean.forEach((field) => {
+      // If the field has a truthy value (i.e., not an empty string ""), convert it to a Number.
+      // Otherwise, set it to undefined.
+      cleaned[field] = cleaned[field] ? Number(cleaned[field]) : undefined;
     });
 
+    // 3. Prepare the final payload, ensuring Company/Branch/FY IDs are included.
     const payload = {
       ...cleaned,
+      // NOTE: companyId, branchId, and financialYearId MUST be included here
+      // as they are mandatory foreign keys, even if they are only sent once
+      // during creation. They must be sent on update if they change (though they rarely do).
       companyId: selectedCompany.id,
       branchId: selectedBranch.id,
       financialYearId: selectedFinancialYear.id,
+      consignmentIds: selectedConsignments.map((c) => c.id),
     };
 
     try {
@@ -145,12 +155,14 @@ export default function CreateLorryHire() {
         await createLorryHire(payload);
         alert("Challan created!");
       }
-      navigate("/lorry-hire/create");
+      navigate("/lorry-hire");
     } catch (err) {
       console.error("Error saving:", err.response?.data || err);
       alert("Error saving challan");
     }
   };
+
+  const handleView = () => navigate("/lorry-hire");
 
   return (
     <MainLayout>
@@ -159,66 +171,102 @@ export default function CreateLorryHire() {
           {isEditMode ? "Edit Lorry Hire Challan" : "Create Lorry Hire Challan"}
         </h2>
 
-        <div className="grid grid-cols-3 gap-4">
-          <input name="challanNumber" placeholder="Challan Number" className="border p-2" value={form.challanNumber} onChange={handleChange} />
-          <input type="date" name="challanDate" className="border p-2" value={form.challanDate} onChange={handleChange} />
-          <input type="date" name="lorryHireDate" className="border p-2" value={form.lorryHireDate} onChange={handleChange} />
+        {/* DATE FIELDS */}
+        <div className="grid grid-cols-3 gap-4 mb-4">
+          <div>
+            <label className="text-sm font-semibold">Challan Date</label>
+            <input type="date" name="challanDate" className="border p-2 w-full"
+              value={form.challanDate} onChange={handleChange} />
+          </div>
 
-          <input name="vehicleNo" placeholder="Vehicle No" className="border p-2" value={form.vehicleNo} onChange={handleChange} />
-          <input name="slipNo" placeholder="Slip No" className="border p-2" value={form.slipNo} onChange={handleChange} />
+          <div>
+            <label className="text-sm font-semibold">Lorry Hire Date</label>
+            <input type="date" name="lorryHireDate" className="border p-2 w-full"
+              value={form.lorryHireDate} onChange={handleChange} />
+          </div>
 
-          {/* OWNER */}
-          <Autocomplete
-            label="Lorry Owner"
-            items={owners}
+          <div>
+            <label className="text-sm font-semibold">Challan Number</label>
+            <input name="challanNumber" className="border p-2 w-full"
+              value={form.challanNumber} onChange={handleChange} />
+          </div>
+
+          <input name="vehicleNo" placeholder="Vehicle No" className="border p-2"
+            value={form.vehicleNo} onChange={handleChange} />
+
+          <input name="slipNo" placeholder="Slip No" className="border p-2"
+            value={form.slipNo} onChange={handleChange} />
+
+          <Autocomplete label="Lorry Owner" items={owners}
             value={owners.find((o) => o.id == form.lorryOwnerId)}
-            onChange={(owner) => setForm({ ...form, lorryOwnerId: owner.id })}
-          />
+            onChange={(o) => setForm({ ...form, lorryOwnerId: o.id })} />
 
-          {/* BROKER */}
-          <Autocomplete
-            label="Broker"
-            items={brokers}
+          <Autocomplete label="Broker" items={brokers}
             value={brokers.find((b) => b.id == form.brokerId)}
-            onChange={(broker) => setForm({ ...form, brokerId: broker.id })}
-          />
+            onChange={(b) => setForm({ ...form, brokerId: b.id })} />
 
-          {/* DESTINATION */}
-          <Autocomplete
-            label="Destination"
-            items={destinations}
+          <Autocomplete label="Destination" items={destinations}
             value={destinations.find((d) => d.id == form.destinationId)}
-            onChange={(dest) => setForm({ ...form, destinationId: dest.id })}
-          />
+            onChange={(d) => setForm({ ...form, destinationId: d.id })} />
 
-          <textarea name="remarks" placeholder="Remarks" className="border p-2 col-span-3" value={form.remarks} onChange={handleChange} />
+          <textarea name="remarks" placeholder="Remarks"
+            className="border p-2 col-span-3"
+            value={form.remarks} onChange={handleChange} />
         </div>
 
-        <h3 className="mt-6 font-bold mb-2">Charges</h3>
+        {/* CONSIGNMENT SELECTOR */}
+        <h3 className="mt-6 mb-2 text-lg font-bold">Consignments</h3>
+        <ConsignmentSelector
+          value={selectedConsignments}
+          onChange={setSelectedConsignments}
+          onTotalsChange={(totals) => {
+            setForm((prev) => ({
+              ...prev,
+              totalPackages: totals.totalPkgs,
+              totalWeight: totals.totalWt
+            }));
+          }}
+        />
+      <h3 className="mt-6 font-bold mb-2">Charges</h3>
 
-        <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-3 gap-4">
           {[
-            "totalPackages",
-            "totalWeight",
-            "rate",
-            "lorryHire",
-            "advancePaid",
-            "balancePayable",
-            "loadingCharges",
-            "unloadingCharges",
-            "dieselAdvance",
-            "gstAmount",
-          ].map((field) => (
-            <input key={field} name={field} placeholder={field} value={form[field]} className="border p-2" onChange={handleChange} />
+            { key: "totalPackages", label: "Total Packages" },
+            { key: "totalWeight", label: "Total Weight (kg)" },
+            { key: "rate", label: "Rate" },
+            { key: "lorryHire", label: "Lorry Hire Amount" },
+            { key: "advancePaid", label: "Advance Paid" },
+            { key: "balancePayable", label: "Balance Payable" },
+            { key: "loadingCharges", label: "Loading Charges" },
+            { key: "unloadingCharges", label: "Unloading Charges" },
+            { key: "dieselAdvance", label: "Diesel Advance" },
+            { key: "gstAmount", label: "GST Amount" },
+          ].map(({ key, label }) => (
+            <div key={key} className="flex flex-col">
+              <label className="text-sm font-medium mb-1">{label}</label>
+              <input
+                name={key}
+                placeholder={label}
+                className="border p-2"
+                value={form[key]}
+                onChange={handleChange}
+              />
+            </div>
           ))}
 
-          <label className="flex items-center gap-2">
-            <input type="checkbox" name="gstApplicable" checked={form.gstApplicable} onChange={handleChange} />
-            GST Applicable
-          </label>
-        </div>
+          {/* GST APPLICABLE CHECKBOX */}
+          <div className="flex items-center gap-2 mt-6">
+            <input
+              type="checkbox"
+              name="gstApplicable"
+              checked={form.gstApplicable}
+              onChange={handleChange}
+            />
+            <label className="text-sm font-medium">GST Applicable</label>
+          </div>
+      </div>
 
-        <div className="mt-8 flex items-center gap-4">
+         <div className="mt-8 flex items-center gap-4">
                 {/* Primary Action */}
                 <button
                   onClick={handleSubmit}
