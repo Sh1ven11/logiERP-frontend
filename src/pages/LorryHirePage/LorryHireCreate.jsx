@@ -1,6 +1,6 @@
-import MainLayout from "../../../layout/Mainlayout.jsx";
+import MainLayout from "../../layout/Mainlayout.jsx";
 import { useContext, useEffect, useState } from "react";
-import { SettingsContext } from "../../../context/SettingsContext.jsx";
+import { SettingsContext } from "../../context/SettingsContext.jsx";
 import {
   createLorryHire,
   updateLorryHire,
@@ -8,10 +8,10 @@ import {
   getLorryOwners,
   getLorryBrokers,
   getDestinations,
-} from "../../../api/lorryHireApi.js";
+} from "../../api/lorryHireApi.js";
 
-import Autocomplete from "../../../components/Autocomplete.jsx";
-import ConsignmentSelector from "../../../components/ConsignSelector.jsx";   // ✅ NEW COMPONENT
+import Autocomplete from "../../components/Autocomplete.jsx";
+import ConsignmentSelector from "../../components/ConsignSelector.jsx";   // ✅ NEW COMPONENT
 import { useParams, useNavigate } from "react-router-dom";
 
 export default function CreateLorryHire() {

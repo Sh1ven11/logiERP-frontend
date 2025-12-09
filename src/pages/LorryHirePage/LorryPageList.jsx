@@ -1,7 +1,7 @@
-import MainLayout from "../../../layout/Mainlayout.jsx";
+import MainLayout from "../../layout/Mainlayout.jsx";
 import { useContext, useEffect, useState } from "react";
-import { SettingsContext } from "../../../context/SettingsContext.jsx";
-import { getLorryHires, deleteLorryHire } from "../../../api/lorryHireApi";
+import { SettingsContext } from "../../context/SettingsContext.jsx";
+import { getLorryHires, deleteLorryHire } from "../../api/lorryHireApi.js";
 import { useNavigate } from "react-router-dom";
 
 export default function LorryHireList() {
