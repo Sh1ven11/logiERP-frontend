@@ -44,11 +44,8 @@ export const settleLorryHire = async (id, paymentDate) => {
   return res.data;
 };
 
-export const getLorryOwners = (companyId) => {
-  return axiosClient.get(`/lorry-owners?companyId=${companyId}`);
-};
 
-export const getLorryBrokers = (companyId) => {
+export const getBrokers = (companyId) => {
   return axiosClient.get(`/brokers?companyId=${companyId}`);
 };
 
