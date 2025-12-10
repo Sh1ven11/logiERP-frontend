@@ -1,6 +1,7 @@
 import { useState, useContext, useEffect } from "react";
 import { SettingsContext } from "../../context/SettingsContext.jsx";
-
+//    return <CustomerForm customerId={editId} onClose={() => setEditId(null)} />;
+import { getCustomerById } from "../../api/custApi.js";
 const CustomerForm = ({ customerId, onClose, createCustomer, updateCustomer, customers, fetchCustomers }) => {
   const { selectedCompany, selectedBranch } = useContext(SettingsContext);
   const [form, setForm] = useState({ 
@@ -19,12 +20,24 @@ const CustomerForm = ({ customerId, onClose, createCustomer, updateCustomer, cus
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+  const fetchCustomerData = async (id) => {
+    try {
+      setLoading(true); // Indicate that data loading is happening
+      console.log("Fetching customer data for ID:", id);
+      const customer = await getCustomerById(id); // Use the API function
+      setForm(customer);
+    } catch (err) {
+      setError("Failed to fetch customer data.");
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
   useEffect(() => {
     if (customerId) {
-      const customer = customers.find(c => c.id === customerId);
-      if (customer) setForm(customer);
-    }
-  }, [customerId, customers]);
+      fetchCustomerData(customerId);
+    }     // you might want to reset the form here.
+  }, [customerId]); // Dependency on customerId is sufficient
 
   const handleSubmit = async (e) => {
     e.preventDefault();
