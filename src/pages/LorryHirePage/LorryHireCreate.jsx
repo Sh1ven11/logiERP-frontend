@@ -108,13 +108,36 @@ export default function CreateLorryHire() {
   ]);
 
   // LOAD MASTER DATA
-  useEffect(() => {
-    if (!selectedCompany) return;
-    
+ // --- In CreateLorryHire.jsx ---
 
-    getLorryOwners(selectedCompany.id).then((res) => setOwners(res.data || []));
-    getLorryBrokers(selectedCompany.id).then((res) => setBrokers(res.data || []));
-    getDestinations().then((res) => setDestinations(res.data || []));
+  // LOAD MASTER DATA
+  useEffect(() => {
+      // 1. Context Check
+      if (!selectedCompany?.id) return; 
+
+      const companyId = selectedCompany.id;
+
+      // Lorry Owners (working)
+      getLorryOwners(companyId).then((res) => {
+          setOwners(res.data || []);
+      });
+      
+      // FIX: Simplified Promise Handling for Brokers
+      getLorryBrokers(companyId)
+          .then((res) => {
+              // Log final successful count before setting state (optional check)
+              setBrokers(res|| []);
+          })
+          .catch((err) => {
+              console.error("Broker fetch failed in component:", err);
+              // Optionally set an error state here if needed
+          });
+
+      // Destinations (assumes no company filter)
+      getDestinations().then((res) => {
+          setDestinations(res.data || []);
+      });
+
   }, [selectedCompany]);
 
   // LOAD EXISTING CHALLAN (EDIT MODE)
