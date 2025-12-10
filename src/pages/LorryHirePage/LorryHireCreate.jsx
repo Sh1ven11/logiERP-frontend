@@ -119,7 +119,7 @@ export default function CreateLorryHire() {
 
       // Lorry Owners (working)
       getLorryOwners(companyId).then((res) => {
-          setOwners(res.data || []);
+          setOwners(res ||[]);
       });
       
       // FIX: Simplified Promise Handling for Brokers
@@ -133,10 +133,14 @@ export default function CreateLorryHire() {
               // Optionally set an error state here if needed
           });
 
+      getDestinations()
+      .then((res)=>{
+        // FIX: 'res' already contains the data array returned by the async function
+        setDestinations(res || []); 
+      }).catch((err)=>{console.log("Destination fetch failed:", err)});
+
       // Destinations (assumes no company filter)
-      getDestinations().then((res) => {
-          setDestinations(res.data || []);
-      });
+  
 
   }, [selectedCompany]);
 

@@ -63,7 +63,6 @@ export const updateCustomerGroup = async (groupId, groupData) => {
   const res = await axiosClient.patch(`/customer-groups/${groupId}`, groupData);
   return res.data;
 };
-
 export const deleteCustomerGroup = async (groupId) => {
   const res = await axiosClient.delete(`/customer-groups/${groupId}`);
   return res.data;

@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useContext, useCallback } from 'react'; // ADDED useContext and useCallback
 import { SettingsContext } from '../../context/SettingsContext.jsx'; // IMPORTED SettingsContext
-import { getBrokers, createBroker, updateBroker, deleteBroker } from '../../api/brokerApi';
+import { getBrokers, createBroker, updateBroker, deleteBroker } from '../../api/brokerApi.js';
 import MainLayout from '../../layout/Mainlayout.jsx';
 import { Trash2, Edit, Plus, X } from 'lucide-react';
 
