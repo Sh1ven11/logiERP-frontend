@@ -1,9 +1,19 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react"; // Added useEffect and useCallback
 import CustomerForm from "./CustomerForm.jsx";
+// Import the necessary API functions
+import { getCustomers, deleteCustomer, updateCustomer, createCustomer } from "../../api/custApi.js"; 
 
 const ITEMS_PER_PAGE = 10;
 
-const CustomerList = ({ customers, loading, deleteCustomer }) => {
+// Refactored to remove 'customers' and 'loading' props
+// Also removed 'deleteCustomer' as it will be imported and used locally
+const CustomerList = () => { 
+  // State for data management
+  const [customers, setCustomers] = useState([]); // New state for customer data
+  const [loading, setLoading] = useState(true);   // New state for loading status
+  const [error, setError] = useState(null);       // New state for error handling
+
+  // Existing states
   const [search, setSearch] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [editId, setEditId] = useState(null);
@@ -11,6 +21,29 @@ const CustomerList = ({ customers, loading, deleteCustomer }) => {
   const [hoveredCustomerId, setHoveredCustomerId] = useState(null);
   const [hoverPosition, setHoverPosition] = useState({ x: 0, y: 0 });
 
+  // 1. Data Fetching Function (made portable/reusable)
+  const fetchCustomers = useCallback(async (companyId) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await getCustomers(companyId); // Assuming getCustomers takes an optional companyId
+      setCustomers(data);
+    } catch (err) {
+      console.error("Failed to fetch customers:", err);
+      setError("Failed to load customer list.");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // 2. useEffect to Fetch Data on Mount
+  useEffect(() => {
+    // NOTE: If your list depends on selectedCompany/Branch from context, 
+    // you would need to use useContext here and pass the ID to fetchCustomers.
+    fetchCustomers(); 
+  }, [fetchCustomers]);
+
+  // Data Filtering and Pagination (Unchanged)
   const filtered = customers.filter(
     c =>
       c.companyName?.toLowerCase().includes(search.toLowerCase()) ||
@@ -30,25 +63,22 @@ const CustomerList = ({ customers, loading, deleteCustomer }) => {
     setCurrentPage(1);
   };
 
-  if (editId) {
-    return <CustomerForm customerId={editId} onClose={() => setEditId(null)} />;
-  }
-
-  if (loading) {
-    return <div className="text-center py-8 text-gray-500">Loading...</div>;
-  }
-
+  // 3. Handle Delete (Using imported function and local refresh)
   const handleDeleteConfirm = async () => {
     if (deleteConfirm) {
       try {
-        await deleteCustomer(deleteConfirm.id);
+        await deleteCustomer(deleteConfirm.id); // Use the imported delete function
         setDeleteConfirm(null);
+        // Refresh the list after successful deletion
+        fetchCustomers(); 
       } catch (err) {
-        // Handle error silently
+        // Handle error and show a message
+        setError("Failed to delete customer.");
       }
     }
   };
 
+  // Remaining Handlers (Unchanged)
   const handleRowHover = (e, customerId) => {
     setHoveredCustomerId(customerId);
     const rect = e.currentTarget.getBoundingClientRect();
@@ -61,6 +91,28 @@ const CustomerList = ({ customers, loading, deleteCustomer }) => {
   const handleRowLeave = () => {
     setHoveredCustomerId(null);
   };
+
+  if (loading) {
+    return <div className="text-center py-8 text-gray-500">Loading...</div>;
+  }
+  
+  if (error && !loading && customers.length === 0) {
+      return <div className="text-center py-8 text-red-500">{error}</div>;
+  }
+
+  // NOTE: The CustomerForm MUST now be passed the API functions
+  if (editId) {
+    return (
+        <CustomerForm 
+            customerId={editId} 
+            onClose={() => setEditId(null)} 
+            // Pass the imported API functions and the fetchCustomers callback for refresh
+            createCustomer={createCustomer} 
+            updateCustomer={updateCustomer} 
+            fetchCustomers={fetchCustomers}
+        />
+    );
+  }
 
   return (
     <>
@@ -101,7 +153,7 @@ const CustomerList = ({ customers, loading, deleteCustomer }) => {
                   <td className="px-6 py-4 text-right text-sm">
                     <div className="flex items-center justify-end gap-4">
                       <button
-                        onClick={() => setEditId(customer.id)}
+                        onClick={() => setEditId(customer.companyCode)}
                         className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 font-medium text-sm inline-flex items-center gap-2 transition"
                         title="Edit customer"
                       >
@@ -125,7 +177,7 @@ const CustomerList = ({ customers, loading, deleteCustomer }) => {
           )}
         </div>
 
-        {/* Pagination Controls */}
+        {/* Pagination Controls (Unchanged) */}
         {filtered.length > 0 && (
           <div className="mt-4 flex items-center justify-center gap-1">
             <button
@@ -175,7 +227,7 @@ const CustomerList = ({ customers, loading, deleteCustomer }) => {
         )}
       </div>
 
-      {/* Customer Details Hover Popup */}
+      {/* Customer Details Hover Popup (Unchanged, uses local customers state) */}
       {hoveredCustomerId && (
         <div className="fixed z-40 pointer-events-none" style={{
           left: `${hoverPosition.x}px`,
@@ -249,7 +301,7 @@ const CustomerList = ({ customers, loading, deleteCustomer }) => {
         </div>
       )}
 
-      {/* Edit Modal */}
+      {/* Edit Modal (Updated to pass API functions) */}
       {editId && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg shadow-lg max-w-2xl w-full max-h-screen overflow-y-auto">
@@ -263,13 +315,19 @@ const CustomerList = ({ customers, loading, deleteCustomer }) => {
               </button>
             </div>
             <div className="p-6">
-              <CustomerForm customerId={editId} onClose={() => setEditId(null)} />
+              <CustomerForm 
+                customerId={editId} 
+                onClose={() => setEditId(null)} 
+                createCustomer={createCustomer} // Imported
+                updateCustomer={updateCustomer} // Imported
+                fetchCustomers={fetchCustomers} // Local refresh callback
+              />
             </div>
           </div>
         </div>
       )}
 
-      {/* Delete Confirmation Modal */}
+      {/* Delete Confirmation Modal (Unchanged) */}
       {deleteConfirm && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg shadow-lg p-6 max-w-sm w-full mx-4">
