@@ -10,6 +10,8 @@ import PublicRoute from "./PublicRoute.jsx";
 import BillsPage from "../pages/Functions/BillsPage.jsx";
 import LorryHireCreate from "../pages/LorryHirePage/LorryHireCreate.jsx";
 import Customer from "../pages/Customer/customer.jsx";
+import LorryOwnersPage from "../pages/LorryOwners/LorryOwnersPage.jsx";
+import DestinationsPage from "../pages/Destination/DestinationsPage.jsx";
 export default function AppRoutes() {
   return (
     <BrowserRouter>
@@ -25,6 +27,9 @@ export default function AppRoutes() {
         <Route path="/lorry-hire/edit/:id" element={<ProtectedRoute><LorryHireCreate /></ProtectedRoute>} />
 
         <Route path="/lorry-hire" element={<ProtectedRoute><LorryHireList /></ProtectedRoute>} />
+        <Route path="/lorry-owners" element={<ProtectedRoute><LorryOwnersPage /></ProtectedRoute>} />
+        <Route path="/destinations" element={<ProtectedRoute><DestinationsPage /></ProtectedRoute>} />
+
         <Route path="/bills" element={<ProtectedRoute><BillsPage /></ProtectedRoute>} />
         <Route path="/" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
 
