@@ -2,7 +2,8 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import LoginPage from "../pages/Login/LoginPage.jsx";
 import DashboardPage from "../pages/Dashboard/DashboardPage.jsx";
 //import CustomersPage from "../pages/Functions/CustomersPage.jsx";
-import ConsignmentsPage from "../pages/Consignment/ConsignmentsPage.jsx";
+import ConsignmentsList from "../pages/Consignment/ConsignmentsList.jsx";
+import ConsignmentForm from "../pages/Consignment/ConsignmentsForm.jsx";
 import LorryHireList from "../pages/LorryHirePage/LorryPageList.jsx";
 import BrokersPage from "../pages/Brokers/BrokersPage.jsx";
 import ProtectedRoute from "./ProtectedRoute.jsx";
@@ -22,8 +23,9 @@ export default function AppRoutes() {
         <Route path="/customers" element={<ProtectedRoute><Customer /></ProtectedRoute>} />
         <Route path="/brokers" element={<ProtectedRoute><BrokersPage /></ProtectedRoute>} />
 
-        <Route path="/consignments" element={<ProtectedRoute><ConsignmentsPage /></ProtectedRoute>} />
-
+        <Route path="/consignments" element={<ProtectedRoute><ConsignmentsList /></ProtectedRoute>} />
+        <Route path="/consignments/:id/edit" element={<ProtectedRoute><ConsignmentForm /></ProtectedRoute>} />
+        <Route path="/consignments/new" element={<ProtectedRoute><ConsignmentForm /></ProtectedRoute>} />
         <Route path="/lorry-hire/create" element={<ProtectedRoute><LorryHireCreate /></ProtectedRoute>} />
         <Route path="/lorry-hire/edit/:id" element={<ProtectedRoute><LorryHireCreate /></ProtectedRoute>} />
 

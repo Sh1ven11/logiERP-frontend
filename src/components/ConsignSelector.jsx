@@ -13,9 +13,9 @@ export default function ConsignmentSelector({ value, onChange, onTotalsChange })
 
   const wrapperRef = useRef(null);
 
-  // -----------------------------
-  // SEARCH (Debounced)
-  // -----------------------------
+  /* ----------------------------------------------------
+     SEARCH CONSIGNMENTS
+  ---------------------------------------------------- */
   useEffect(() => {
     if (!query || query.length < 1) {
       setResults([]);
@@ -25,7 +25,7 @@ export default function ConsignmentSelector({ value, onChange, onTotalsChange })
     const timeout = setTimeout(async () => {
       const res = await axiosClient.get("/consignments/search", {
         params: {
-          query,
+          cnNumber: query,
           companyId: selectedCompany?.id,
           financialYearId: selectedFinancialYear?.id,
         },
@@ -38,9 +38,9 @@ export default function ConsignmentSelector({ value, onChange, onTotalsChange })
     return () => clearTimeout(timeout);
   }, [query, selectedCompany, selectedFinancialYear]);
 
-  // -----------------------------
-  // OUTSIDE CLICK
-  // -----------------------------
+  /* ----------------------------------------------------
+     OUTSIDE CLICK
+  ---------------------------------------------------- */
   useEffect(() => {
     const handler = (e) => {
       if (wrapperRef.current && !wrapperRef.current.contains(e.target)) {
@@ -51,28 +51,30 @@ export default function ConsignmentSelector({ value, onChange, onTotalsChange })
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
-  // -----------------------------
-  // ADD CONSIGNMENT
-  // Normalize incoming structure
-  // -----------------------------
+  /* ----------------------------------------------------
+     NORMALIZE CONSIGNMENT STRUCTURE
+  ---------------------------------------------------- */
   const addCN = (raw) => {
-    // Convert search result into backend structure
-    const cn = raw.consignment
-      ? raw
-      : {
-          id: raw.id,
-          consignment: {
-            cnNumber: raw.cnNumber,
-            packages: raw.packages,
-            netWeight: raw.chargeWeight,
-            packageUom: raw.packageUom || "-",
-            rateOn: raw.rateOn || "-",
-            fromDestination: raw.fromDestination || {},
-            toDestination: raw.toDestination || {},
-          },
-        };
+    const cn = {
+      id: raw.id,
 
-    if (!value.some((v) => v.id === cn.id)) {
+      consignment: {
+        cnNumber: raw.cnNumber,
+        packages: raw.packages,
+        netWeight: raw.chargeWeight ?? raw.netWeight ?? 0,
+        packageUom: raw.packageUom || "-",
+        rateOn: raw.rateOn || "-",
+
+        fromDestination: raw.fromDestination ?? {},
+        toDestination: raw.toDestination ?? {},
+
+        consignor: raw.consignor ?? {},
+        consignee: raw.consignee ?? {},
+      },
+    };
+
+    // Avoid duplicates
+    if (!value.some((v) => v.id === raw.id)) {
       onChange([...value, cn]);
     }
 
@@ -80,30 +82,40 @@ export default function ConsignmentSelector({ value, onChange, onTotalsChange })
     setOpen(false);
   };
 
-  // -----------------------------
-  // REMOVE CONSIGNMENT
-  // -----------------------------
+  /* ----------------------------------------------------
+     REMOVE CONSIGNMENT
+  ---------------------------------------------------- */
   const removeCN = (id) => {
     onChange(value.filter((c) => c.id !== id));
   };
 
-  // -----------------------------
-  // AUTO CALCULATE TOTALS
-  // -----------------------------
+  /* ----------------------------------------------------
+     AUTO TOTALS
+  ---------------------------------------------------- */
   useEffect(() => {
-    if (!value || value.length === 0) {
+    if (value.length === 0) {
       setTotals({ totalPkgs: 0, totalWt: 0 });
       onTotalsChange?.({ totalPkgs: 0, totalWt: 0 });
       return;
     }
 
-    const totalPkgs = value.reduce((sum, c) => sum + (c.consignment.packages || 0), 0);
-    const totalWt = value.reduce((sum, c) => sum + (c.consignment.netWeight || 0), 0);
+    const totalPkgs = value.reduce(
+      (sum, c) => sum + (c.consignment.packages || 0),
+      0
+    );
+
+    const totalWt = value.reduce(
+      (sum, c) => sum + (c.consignment.netWeight || 0),
+      0
+    );
 
     setTotals({ totalPkgs, totalWt });
     onTotalsChange?.({ totalPkgs, totalWt });
   }, [value]);
 
+  /* ----------------------------------------------------
+     UI
+  ---------------------------------------------------- */
   return (
     <div className="relative w-full" ref={wrapperRef}>
       <label className="text-sm font-medium">Add Consignments</label>
@@ -114,10 +126,10 @@ export default function ConsignmentSelector({ value, onChange, onTotalsChange })
         placeholder="Search consignment number..."
         value={query}
         onChange={(e) => setQuery(e.target.value)}
-        onFocus={() => open && setOpen(true)}
+        onFocus={() => setOpen(true)}
       />
 
-      {/* SEARCH RESULTS DROPDOWN */}
+      {/* DROPDOWN RESULTS */}
       {open && results.length > 0 && (
         <ul className="absolute left-0 right-0 bg-white border rounded shadow max-h-60 overflow-auto z-20">
           {results.map((cn) => (
@@ -126,13 +138,13 @@ export default function ConsignmentSelector({ value, onChange, onTotalsChange })
               className="p-2 hover:bg-gray-100 cursor-pointer"
               onClick={() => addCN(cn)}
             >
-              <b>{cn.cnNumber}</b> — {cn.packages} pkgs, {cn.chargeWeight} kg
+              <b>{cn.cnNumber}</b> — {cn.packages} pkgs, {cn.chargeWeight ?? cn.netWeight} kg
             </li>
           ))}
         </ul>
       )}
 
-      {/* SELECTED CONSIGNMENTS TABLE */}
+      {/* SELECTED LIST */}
       {value.length > 0 && (
         <div className="mt-6">
           <h3 className="text-lg font-bold mb-2">Selected Consignments</h3>
@@ -157,7 +169,6 @@ export default function ConsignmentSelector({ value, onChange, onTotalsChange })
                   <td className="border p-2">{cn.consignment.packageUom}</td>
                   <td className="border p-2">{cn.consignment.netWeight}</td>
                   <td className="border p-2">{cn.consignment.rateOn}</td>
-
                   <td className="border p-2 text-center">
                     <button
                       className="text-red-600 hover:underline"

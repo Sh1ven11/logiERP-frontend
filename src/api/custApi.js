@@ -10,7 +10,21 @@ export const getCustomers = async (companyId) => {
   const res = await axiosClient.get("/customers", {
     params: { companyId },
   });
+  console.log("Fetched customers:", res.data); // DEBUG
   return res.data;
+};
+export const getCustomersByName = async (companyId, query = '') => {
+    // We call the search endpoint, passing the query parameter.
+    // Assuming the backend filters by name/companyName when the 'query' is provided.
+    const res = await axiosClient.get(`/customers/search`, {
+        params: {
+            companyId: companyId,
+            query: query // Assuming backend DTO 'SearchDestinationDto' accepts a 'query' for name search
+        }
+    });
+    
+    // The backend should return the small, filtered list (e.g., 20 items)
+    return res.data;
 };
 
 export const getCustomerById = async (customerId) => {
