@@ -1,15 +1,19 @@
 import MainLayout from "../../layout/Mainlayout.jsx";
-import { useContext, useEffect, useState } from "react";
+import { useContext, useEffect, useState, useCallback } from "react";
 import { SettingsContext } from "../../context/SettingsContext.jsx";
 import {
   createLorryHire,
   updateLorryHire,
   getLorryHire,
 } from "../../api/lorryHireApi.js";
-import { getLorryOwners } from "../../api/lorryOwnerApi.js";
-import { getBrokers as getLorryBrokers } from "../../api/brokerApi.js";
-import { getDestinations } from "../../api/destinationApi.js";
-import Autocomplete from "../../components/Autocomplete.jsx";
+
+// Import the specific search APIs directly
+import { getLorryOwnersByName } from "../../api/lorryOwnerApi.js";
+import { getBrokersByName } from "../../api/brokerApi.js";
+import { getDestinationsByName } from "../../api/destinationApi.js";
+
+import AAutocomplete from "../../components/Acomplete.jsx"; // Assuming this is the reusable component
+
 import ConsignmentSelector from "../../components/ConsignSelector.jsx";
 import { useParams, useNavigate } from "react-router-dom";
 
@@ -31,10 +35,7 @@ export default function CreateLorryHire() {
     );
   }
 
-  const [owners, setOwners] = useState([]);
-  const [brokers, setBrokers] = useState([]);
-  const [destinations, setDestinations] = useState([]);
-  //Form state
+  // Form state
   const [form, setForm] = useState({
     challanNumber: "",
     challanDate: today,
@@ -63,10 +64,15 @@ export default function CreateLorryHire() {
   });
 
   const [selectedConsignments, setSelectedConsignments] = useState([]);
-  const [selectedBroker, setSelectedBroker] = useState(null);
+  // selectedBroker/selectedOwner are still needed for TDS logic and display
+  const [selectedBroker, setSelectedBroker] = useState(null); 
   const [selectedOwner, setSelectedOwner] = useState(null);
+  const [selectedDestination, setSelectedDestination] = useState(null);
 
-  // Calculation functions
+  
+
+
+  // Calculation functions (unchanged)
   const calculateTDSAmount = () => {
     if (form.tdsApplicable === "no" || !form.tdsRate || !form.lorryHire) return 0;
     return (Number(form.lorryHire) * Number(form.tdsRate)) / 100;
@@ -91,7 +97,7 @@ export default function CreateLorryHire() {
     return totalAmount - tdsAmount - advancePaid;
   };
 
-  // Auto-update the balancePayable field
+  // Auto-update the balancePayable field (unchanged)
   useEffect(() => {
     const balance = calculateBalance();
     setForm(prev => ({ ...prev, balancePayable: balance.toFixed(2) }));
@@ -107,44 +113,7 @@ export default function CreateLorryHire() {
     form.advancePaid
   ]);
 
-  // LOAD MASTER DATA
- // --- In CreateLorryHire.jsx ---
-
-  // LOAD MASTER DATA
-  useEffect(() => {
-      // 1. Context Check
-      if (!selectedCompany?.id) return; 
-
-      const companyId = selectedCompany.id;
-
-      // Lorry Owners (working)
-      getLorryOwners(companyId).then((res) => {
-          setOwners(res ||[]);
-      });
-      
-      // FIX: Simplified Promise Handling for Brokers
-      getLorryBrokers(companyId)
-          .then((res) => {
-              // Log final successful count before setting state (optional check)
-              setBrokers(res|| []);
-          })
-          .catch((err) => {
-              console.error("Broker fetch failed in component:", err);
-              // Optionally set an error state here if needed
-          });
-
-      getDestinations()
-      .then((res)=>{
-        // FIX: 'res' already contains the data array returned by the async function
-        setDestinations(res || []); 
-      }).catch((err)=>{console.log("Destination fetch failed:", err)});
-
-      // Destinations (assumes no company filter)
-  
-
-  }, [selectedCompany]);
-
-  // LOAD EXISTING CHALLAN (EDIT MODE)
+  // LOAD EXISTING CHALLAN (EDIT MODE) - Update to load selected objects
   useEffect(() => {
     if (!isEditMode) return;
 
@@ -177,15 +146,17 @@ export default function CreateLorryHire() {
         tdsType: data.tdsType || "",
       });
 
-      // selected consignments from backend
+      // Set the full object data for the Autocomplete's initial search value
+      // This is crucial for pre-filling the Autocomplete input field.
       setSelectedConsignments(data.consignments || []);
       setSelectedBroker(data.broker || null);
       setSelectedOwner(data.lorryOwner || null);
+      setSelectedDestination(data.destination || null);
 
     });
   }, [id, isEditMode]);
 
-  // Handle TDS applicable change
+  // Handle TDS applicable change (unchanged)
   const handleTdsApplicableChange = (value) => {
     // Start with a clean slate for panNumber/tdsType when changing the type
     let updatedForm = { ...form, tdsApplicable: value, tdsType: "", panNumber: "" };
@@ -231,13 +202,13 @@ export default function CreateLorryHire() {
     setForm(updatedForm);
   };
 
-  // Handle broker selection
+  // Handle broker selection (Updated for new Autocomplete value handling)
   const handleBrokerChange = (broker) => {
     setSelectedBroker(broker);
-    let newForm = { ...form, brokerId: broker.id };
+    let newForm = { ...form, brokerId: broker?.id || "" };
 
     // Check if TDS is set to broker and update PAN accordingly
-    if (form.tdsApplicable === "broker") {
+    if (newForm.tdsApplicable === "broker") {
       if (broker?.panNumber) {
         newForm.panNumber = broker.panNumber;
         newForm.tdsType = "broker";
@@ -250,13 +221,13 @@ export default function CreateLorryHire() {
     setForm(newForm);
   };
 
-  // Handle lorry owner selection
+  // Handle lorry owner selection (Updated for new Autocomplete value handling)
   const handleOwnerChange = (owner) => {
     setSelectedOwner(owner);
-    let newForm = { ...form, lorryOwnerId: owner.id };
+    let newForm = { ...form, lorryOwnerId: owner?.id || "" };
 
     // Check if TDS is set to lorry owner and update PAN accordingly
-    if (form.tdsApplicable === "lorryOwner") {
+    if (newForm.tdsApplicable === "lorryOwner") {
       if (owner?.panNumber) {
         newForm.panNumber = owner.panNumber;
         newForm.tdsType = "lorryOwner";
@@ -269,7 +240,14 @@ export default function CreateLorryHire() {
     setForm(newForm);
   };
 
-  // FORM HANDLER
+  // Handle destination selection (New handler for modularity)
+  const handleDestinationSelect = (destination) => {
+    setSelectedDestination(destination);
+    setForm({ ...form, destinationId: destination?.id || "" });
+  };
+
+
+  // FORM HANDLER (unchanged)
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
     setForm({ ...form, [name]: type === "checkbox" ? checked : value });
@@ -338,7 +316,7 @@ export default function CreateLorryHire() {
         <h2 className="text-xl font-bold mb-4">
           {isEditMode ? "Edit Lorry Hire Challan" : "Create Lorry Hire Challan"}
         </h2>
-
+        
         {/* DATE FIELDS */}
         <div className="grid grid-cols-3 gap-4 mb-4">
           <div>
@@ -395,26 +373,68 @@ export default function CreateLorryHire() {
             />
           </div>
           
-          <Autocomplete 
-            label="Lorry Owner" 
-            items={owners}
-            value={owners.find((o) => o.id == form.lorryOwnerId)}
-            onChange={handleOwnerChange}
-          />
+          {/* LORRY OWNER - MODULARIZED */}
+          <div>
+            <label className="text-sm font-semibold">Lorry Owner</label>
+              <AAutocomplete 
+                fetchFunction={(query) =>
+                  getLorryOwnersByName(selectedCompany.id, query)
+                }
+                onSelect={handleOwnerChange}
+                renderOption={(owner) => (
+                  <div className="text-sm">
+                    <p className="font-medium">{owner.name}</p>
+                    <p className="text-xs text-gray-500">
+                      PAN: {owner.panNumber || "N/A"}
+                    </p>
+                  </div>
+                )}
+                initialSearchValue={selectedOwner?.name || ""}
+                placeholder="Search Lorry Owner"
+              />
 
-          <Autocomplete 
-            label="Broker" 
-            items={brokers}
-            value={brokers.find((b) => b.id == form.brokerId)}
-            onChange={handleBrokerChange}
-          />
+          </div>
 
-          <Autocomplete 
-            label="Destination" 
-            items={destinations}
-            value={destinations.find((d) => d.id == form.destinationId)}
-            onChange={(d) => setForm({ ...form, destinationId: d.id })}
-          />
+          {/* BROKER - MODULARIZED */}
+          <div>
+            <label className="text-sm font-semibold">Broker</label>
+                <AAutocomplete 
+                    fetchFunction={(query) =>
+                      getBrokersByName(selectedCompany.id, query)
+                    }
+                    onSelect={handleBrokerChange}
+                    renderOption={(broker) => (
+                      <div className="text-sm">
+                        <p className="font-medium">{broker.name}</p>
+                        <p className="text-xs text-gray-500">
+                          PAN: {broker.panNumber || "N/A"}
+                        </p>
+                      </div>
+                    )}
+                    initialSearchValue={selectedBroker?.name || ""}
+                    placeholder="Search Broker"
+                  />
+
+          </div>
+
+          {/* DESTINATION - MODULARIZED */}
+          <div>
+            <label className="text-sm font-semibold">Destination</label>
+                    <AAutocomplete 
+                        fetchFunction={(query) =>
+                          getDestinationsByName(query)
+                        }
+                        onSelect={handleDestinationSelect}
+                        renderOption={(dest) => (
+                          <div className="text-sm">
+                            <p className="font-medium">{dest.name}</p>
+                          </div>
+                        )}
+                        initialSearchValue={selectedDestination?.name || ""}
+                        placeholder="Search Destination"
+                      />
+
+          </div>
 
           <textarea 
             name="remarks" 

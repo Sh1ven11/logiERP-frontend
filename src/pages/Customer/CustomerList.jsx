@@ -1,17 +1,20 @@
-import { useState, useEffect, useCallback } from "react"; // Added useEffect and useCallback
+import { useState, useEffect, useCallback, useContext } from "react"; 
 import CustomerForm from "./CustomerForm.jsx";
 // Import the necessary API functions
 import { getCustomers, deleteCustomer, updateCustomer, createCustomer } from "../../api/custApi.js"; 
+import { SettingsContext } from "../../context/SettingsContext.jsx";
 
 const ITEMS_PER_PAGE = 10;
 
-// Refactored to remove 'customers' and 'loading' props
-// Also removed 'deleteCustomer' as it will be imported and used locally
 const CustomerList = () => { 
+  // Get companyId from context (FIXED: access to global state)
+  const { selectedCompany } = useContext(SettingsContext);
+  const companyId = selectedCompany?.id;
+    
   // State for data management
-  const [customers, setCustomers] = useState([]); // New state for customer data
-  const [loading, setLoading] = useState(true);   // New state for loading status
-  const [error, setError] = useState(null);       // New state for error handling
+  const [customers, setCustomers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   // Existing states
   const [search, setSearch] = useState("");
@@ -21,12 +24,13 @@ const CustomerList = () => {
   const [hoveredCustomerId, setHoveredCustomerId] = useState(null);
   const [hoverPosition, setHoverPosition] = useState({ x: 0, y: 0 });
 
-  // 1. Data Fetching Function (made portable/reusable)
-  const fetchCustomers = useCallback(async (companyId) => {
+  // 1. Data Fetching Function
+  const fetchCustomers = useCallback(async (id) => {
     setLoading(true);
     setError(null);
     try {
-      const data = await getCustomers(companyId); // Assuming getCustomers takes an optional companyId
+      // Use the received ID for the API call
+      const data = await getCustomers(id); 
       setCustomers(data);
     } catch (err) {
       console.error("Failed to fetch customers:", err);
@@ -34,14 +38,20 @@ const CustomerList = () => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, []); // Stable function reference
 
-  // 2. useEffect to Fetch Data on Mount
+  // 2. useEffect to Fetch Data (FIXED: Depends on companyId)
   useEffect(() => {
-    // NOTE: If your list depends on selectedCompany/Branch from context, 
-    // you would need to use useContext here and pass the ID to fetchCustomers.
-    fetchCustomers(); 
-  }, [fetchCustomers]);
+    // Only attempt to fetch if a companyId is selected
+    if (companyId) {
+      fetchCustomers(companyId); 
+    } else {
+      // Clear data and stop loading if no company is selected
+      setCustomers([]);
+      setLoading(false);
+    }
+  // The effect re-runs whenever companyId changes, ensuring reload
+  }, [fetchCustomers, companyId]); 
 
   // Data Filtering and Pagination (Unchanged)
   const filtered = customers.filter(
@@ -67,10 +77,10 @@ const CustomerList = () => {
   const handleDeleteConfirm = async () => {
     if (deleteConfirm) {
       try {
-        await deleteCustomer(deleteConfirm.id); // Use the imported delete function
+        await deleteCustomer(deleteConfirm.id); 
         setDeleteConfirm(null);
-        // Refresh the list after successful deletion
-        fetchCustomers(); 
+        // Refresh the list after successful deletion, passing the current companyId
+        fetchCustomers(companyId); 
       } catch (err) {
         // Handle error and show a message
         setError("Failed to delete customer.");
@@ -227,7 +237,7 @@ const CustomerList = () => {
         )}
       </div>
 
-      {/* Customer Details Hover Popup (Unchanged, uses local customers state) */}
+      {/* Customer Details Hover Popup (Unchanged) */}
       {hoveredCustomerId && (
         <div className="fixed z-40 pointer-events-none" style={{
           left: `${hoverPosition.x}px`,
@@ -301,7 +311,7 @@ const CustomerList = () => {
         </div>
       )}
 
-      {/* Edit Modal (Updated to pass API functions) */}
+      {/* Edit Modal */}
       {editId && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg shadow-lg max-w-2xl w-full max-h-screen overflow-y-auto">
@@ -318,16 +328,16 @@ const CustomerList = () => {
               <CustomerForm 
                 customerId={editId} 
                 onClose={() => setEditId(null)} 
-                createCustomer={createCustomer} // Imported
-                updateCustomer={updateCustomer} // Imported
-                fetchCustomers={fetchCustomers} // Local refresh callback
+                createCustomer={createCustomer}
+                updateCustomer={updateCustomer}
+                fetchCustomers={fetchCustomers}
               />
             </div>
           </div>
         </div>
       )}
 
-      {/* Delete Confirmation Modal (Unchanged) */}
+      {/* Delete Confirmation Modal */}
       {deleteConfirm && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg shadow-lg p-6 max-w-sm w-full mx-4">

@@ -33,6 +33,26 @@ export async function getBrokers(companyId) {
     throw new Error(message);
   }
 }
+// GET /brokers/search?companyId=1&query=ram
+export async function getBrokersByName(companyId, query) {
+  try {
+    const res = await axiosClient.get('/brokers/search', {
+      params: {
+        companyId,
+        query,
+      },
+    });
+
+    return res.data;
+  } catch (err) {
+    const message =
+      err?.response?.data?.message ||
+      err.message ||
+      'Failed to fetch brokers by name';
+
+    throw new Error(message);
+  }
+}
 
 // GET /brokers/:id
 export async function getBroker(id) {

@@ -11,6 +11,7 @@ import {
 import { getCustomersByName } from "../../api/custApi.js";
 import { getDestinationsByName } from "../../api/destinationApi.js";
 
+import AAutocomplete from "../../components/Acomplete.jsx";
 import MainLayout from "../../layout/Mainlayout.jsx";
 
 export default function ConsignmentForm() {
@@ -31,6 +32,7 @@ export default function ConsignmentForm() {
     consigneeId: "",
     fromDestinationId: "",
     toDestinationId: "",
+
     packages: "",
     packageUom: "",
     contents: "",
@@ -46,7 +48,19 @@ export default function ConsignmentForm() {
     remarks: ""
   });
 
-  // Set correct default date for NEW CN
+  // -------------------------
+  // SEARCH DISPLAY STATE (FOR EDIT MODE)
+  // -------------------------
+  const [search, setSearch] = useState({
+    consignor: "",
+    consignee: "",
+    fromDest: "",
+    toDest: ""
+  });
+
+  // -------------------------
+  // DEFAULT DATE
+  // -------------------------
   useEffect(() => {
     if (!editing && selectedFinancialYear) {
       setForm(f => ({
@@ -57,24 +71,7 @@ export default function ConsignmentForm() {
   }, [selectedFinancialYear, editing]);
 
   // -------------------------
-  // SEARCH STATE
-  // -------------------------
-  const [search, setSearch] = useState({
-    consignor: "",
-    consignee: "",
-    fromDest: "",
-    toDest: ""
-  });
-
-  const [options, setOptions] = useState({
-    consignor: [],
-    consignee: [],
-    fromDest: [],
-    toDest: []
-  });
-
-  // -------------------------
-  // EDIT MODE LOAD
+  // LOAD EDIT DATA
   // -------------------------
   useEffect(() => {
     async function load() {
@@ -84,11 +81,7 @@ export default function ConsignmentForm() {
 
       setForm({
         ...data,
-        date: data.date?.slice(0, 10),
-        consignorId: data.consignorId,
-        consigneeId: data.consigneeId,
-        fromDestinationId: data.fromDestinationId,
-        toDestinationId: data.toDestinationId
+        date: data.date?.slice(0, 10)
       });
 
       setSearch({
@@ -103,7 +96,7 @@ export default function ConsignmentForm() {
   }, [id, editing]);
 
   // -------------------------
-  // FORM INPUT HANDLER
+  // INPUT HANDLER
   // -------------------------
   function handleChange(e) {
     const { name, value } = e.target;
@@ -111,66 +104,7 @@ export default function ConsignmentForm() {
   }
 
   // -------------------------
-  // SEARCH HANDLER
-  // -------------------------
-  async function handleSearch(type, value) {
-    setSearch(prev => ({ ...prev, [type]: value }));
-
-    // Reset ID field when typing
-    const idMap = {
-      consignor: "consignorId",
-      consignee: "consigneeId",
-      fromDest: "fromDestinationId",
-      toDest: "toDestinationId",
-    };
-
-    setForm(prev => ({ ...prev, [idMap[type]]: "" }));
-
-    if (value.length < 2) {
-      setOptions(prev => ({ ...prev, [type]: [] }));
-      return;
-    }
-
-    if (type === "consignor" || type === "consignee") {
-      const list = await getCustomersByName(selectedCompany.id, value);
-      setOptions(prev => ({ ...prev, [type]: list }));
-    } else {
-      const list = await getDestinationsByName(value);
-      setOptions(prev => ({ ...prev, [type]: list }));
-    }
-  }
-
-  // -------------------------
-  // OPTION SELECTOR (FIXED)
-  // -------------------------
-  const fieldMap = {
-    consignor: "consignorId",
-    consignee: "consigneeId",
-    fromDest: "fromDestinationId",
-    toDest: "toDestinationId",
-  };
-
-  function selectOption(type, id, label) {
-    const field = fieldMap[type];
-
-    setForm(prev => ({
-      ...prev,
-      [field]: id
-    }));
-
-    setSearch(prev => ({
-      ...prev,
-      [type]: label
-    }));
-
-    setOptions(prev => ({
-      ...prev,
-      [type]: []
-    }));
-  }
-
-  // -------------------------
-  // SUBMIT HANDLER
+  // SUBMIT
   // -------------------------
   async function handleSubmit(e) {
     e.preventDefault();
@@ -184,7 +118,6 @@ export default function ConsignmentForm() {
       branchId: 1,
       financialYearId: Number(selectedFinancialYear.id),
 
-      // number conversions
       packages: toNumOrNull(form.packages),
       netWeight: toNumOrNull(form.netWeight),
       grossWeight: toNumOrNull(form.grossWeight),
@@ -192,8 +125,6 @@ export default function ConsignmentForm() {
       rate: toNumOrNull(form.rate),
       freightCharges: toNumOrNull(form.freightCharges),
     };
-
-    console.log("FINAL PAYLOAD:", payload);
 
     if (editing) {
       await updateConsignment(id, payload);
@@ -209,146 +140,128 @@ export default function ConsignmentForm() {
   // -------------------------
   return (
     <MainLayout>
-      <div className="p-6 max-w-3xl mx-auto">
-        <h1 className="text-xl font-semibold mb-4">
+      <div className="p-5 max-w-4xl mx-auto">
+        <h1 className="text-lg font-semibold mb-3">
           {editing ? "Edit Consignment" : "New Consignment"}
         </h1>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-3 text-sm">
 
-          {/* CN Number */}
-          <div>
-            <label>CN Number *</label>
-            <input
-              name="cnNumber"
-              value={form.cnNumber}
-              onChange={handleChange}
-              className="border w-full px-3 py-2 rounded"
-            />
-          </div>
+          {/* CN + DATE */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label>CN Number *</label>
+              <input
+                name="cnNumber"
+                value={form.cnNumber}
+                onChange={handleChange}
+                className="border w-full px-3 py-2 rounded"
+              />
+            </div>
 
-          {/* DATE */}
-          <div>
-            <label>Date *</label>
-            <input
-              type="date"
-              name="date"
-              value={form.date}
-              onChange={handleChange}
-              className="border w-full px-3 py-2 rounded"
-            />
+            <div>
+              <label>Date *</label>
+              <input
+                type="date"
+                name="date"
+                value={form.date}
+                onChange={handleChange}
+                className="border w-full px-3 py-2 rounded"
+              />
+            </div>
           </div>
 
           {/* CONSIGNOR / CONSIGNEE */}
-          <div className="grid grid-cols-2 gap-4">
-
-            {/* CONSIGNOR */}
-            <div className="relative">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
               <label>Consignor *</label>
-              <input
-                value={search.consignor}
-                onChange={(e) => handleSearch("consignor", e.target.value)}
-                className="border w-full px-3 py-2 rounded"
+              <AAutocomplete
+                fetchFunction={(q) =>
+                  getCustomersByName(selectedCompany.id, q)
+                }
+                onSelect={(c) =>
+                  setForm(f => ({ ...f, consignorId: c?.id || "" }))
+                }
+                initialSearchValue={search.consignor}
+                placeholder="Search Consignor"
+                renderOption={(c) => (
+                  <div className="text-sm font-medium">
+                    {c.companyName}
+                  </div>
+                )}
               />
-              {options.consignor.length > 0 && (
-                <div className="absolute bg-white border mt-1 w-full shadow rounded z-10">
-                  {options.consignor.map(o => (
-                    <div
-                      key={o.id}
-                      onClick={() => selectOption("consignor", o.id, o.companyName)}
-                      className="p-2 hover:bg-blue-100 cursor-pointer"
-                    >
-                      {o.companyName}
-                    </div>
-                  ))}
-                </div>
-              )}
             </div>
 
-            {/* CONSIGNEE */}
-            <div className="relative">
+            <div>
               <label>Consignee *</label>
-              <input
-                value={search.consignee}
-                onChange={(e) => handleSearch("consignee", e.target.value)}
-                className="border w-full px-3 py-2 rounded"
+              <AAutocomplete
+                fetchFunction={(q) =>
+                  getCustomersByName(selectedCompany.id, q)
+                }
+                onSelect={(c) =>
+                  setForm(f => ({ ...f, consigneeId: c?.id || "" }))
+                }
+                initialSearchValue={search.consignee}
+                placeholder="Search Consignee"
+                renderOption={(c) => (
+                  <div className="text-sm font-medium">
+                    {c.companyName}
+                  </div>
+                )}
               />
-              {options.consignee.length > 0 && (
-                <div className="absolute bg-white border mt-1 w-full shadow rounded z-10">
-                  {options.consignee.map(o => (
-                    <div
-                      key={o.id}
-                      onClick={() => selectOption("consignee", o.id, o.companyName)}
-                      className="p-2 hover:bg-blue-100 cursor-pointer"
-                    >
-                      {o.companyName}
-                    </div>
-                  ))}
-                </div>
-              )}
             </div>
-
           </div>
 
           {/* FROM / TO DESTINATION */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="relative">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
               <label>From Destination *</label>
-              <input
-                value={search.fromDest}
-                onChange={(e) => handleSearch("fromDest", e.target.value)}
-                className="border w-full px-3 py-2 rounded"
+              <AAutocomplete
+                fetchFunction={(q) => getDestinationsByName(q)}
+                onSelect={(d) =>
+                  setForm(f => ({ ...f, fromDestinationId: d?.id || "" }))
+                }
+                initialSearchValue={search.fromDest}
+                placeholder="From"
+                renderOption={(d) => (
+                  <div className="text-sm font-medium">
+                    {d.name}
+                  </div>
+                )}
               />
-              {options.fromDest.length > 0 && (
-                <div className="absolute bg-white border mt-1 w-full shadow rounded z-10">
-                  {options.fromDest.map(o => (
-                    <div
-                      key={o.id}
-                      onClick={() => selectOption("fromDest", o.id, o.name)}
-                      className="p-2 hover:bg-blue-100 cursor-pointer"
-                    >
-                      {o.name}
-                    </div>
-                  ))}
-                </div>
-              )}
             </div>
 
-            <div className="relative">
+            <div>
               <label>To Destination *</label>
-              <input
-                value={search.toDest}
-                onChange={(e) => handleSearch("toDest", e.target.value)}
-                className="border w-full px-3 py-2 rounded"
+              <AAutocomplete
+                fetchFunction={(q) => getDestinationsByName(q)}
+                onSelect={(d) =>
+                  setForm(f => ({ ...f, toDestinationId: d?.id || "" }))
+                }
+                initialSearchValue={search.toDest}
+                placeholder="To"
+                renderOption={(d) => (
+                  <div className="text-sm font-medium">
+                    {d.name}
+                  </div>
+                )}
               />
-              {options.toDest.length > 0 && (
-                <div className="absolute bg-white border mt-1 w-full shadow rounded z-10">
-                  {options.toDest.map(o => (
-                    <div
-                      key={o.id}
-                      onClick={() => selectOption("toDest", o.id, o.name)}
-                      className="p-2 hover:bg-blue-100 cursor-pointer"
-                    >
-                      {o.name}
-                    </div>
-                  ))}
-                </div>
-              )}
             </div>
           </div>
 
-          {/* PKG */}
-          <div className="grid grid-cols-2 gap-4">
+          {/* PACKAGES */}
+          <div className="grid grid-cols-2 gap-3">
             <div>
               <label>Packages</label>
               <input
                 name="packages"
+                type="number"
                 value={form.packages}
                 onChange={handleChange}
-                type="number"
                 className="border w-full px-3 py-2 rounded"
               />
             </div>
+
             <div>
               <label>Package UOM</label>
               <input
@@ -368,65 +281,68 @@ export default function ConsignmentForm() {
               value={form.contents}
               onChange={handleChange}
               className="border w-full px-3 py-2 rounded"
-            ></textarea>
-          </div>
-
-          {/* WEIGHTS */}
-          <div className="grid grid-cols-3 gap-4">
-            <div>
-              <label>Net Weight</label>
-              <input
-                name="netWeight"
-                value={form.netWeight}
-                onChange={handleChange}
-                type="number"
-                className="border w-full px-3 py-2 rounded"
-              />
-            </div>
-            <div>
-              <label>Gross Weight</label>
-              <input
-                name="grossWeight"
-                value={form.grossWeight}
-                onChange={handleChange}
-                type="number"
-                className="border w-full px-3 py-2 rounded"
-              />
-            </div>
-            <div>
-              <label>Charge Weight</label>
-              <input
-                name="chargeWeight"
-                value={form.chargeWeight}
-                onChange={handleChange}
-                type="number"
-                className="border w-full px-3 py-2 rounded"
-              />
-            </div>
-          </div>
-
-          <div>
-            <label>Weight UOM *</label>
-            <input
-              name="weightUom"
-              value={form.weightUom}
-              onChange={handleChange}
-              className="border w-full px-3 py-2 rounded"
             />
           </div>
 
+          {/* WEIGHTS */}
+          <div className="grid grid-cols-3 gap-3">
+            <div>
+              <label>Net Wt</label>
+              <input
+                name="netWeight"
+                type="number"
+                value={form.netWeight}
+                onChange={handleChange}
+                className="border w-full px-3 py-2 rounded"
+              />
+            </div>
+
+            <div>
+              <label>Gross Wt</label>
+              <input
+                name="grossWeight"
+                type="number"
+                value={form.grossWeight}
+                onChange={handleChange}
+                className="border w-full px-3 py-2 rounded"
+              />
+            </div>
+
+            <div>
+              <label>Charge Wt</label>
+              <input
+                name="chargeWeight"
+                type="number"
+                value={form.chargeWeight}
+                onChange={handleChange}
+                className="border w-full px-3 py-2 rounded"
+              />
+            </div>
+          </div>
+
           {/* RATE */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-3 gap-3">
+            <div>
+              <label>Weight UOM *</label>
+              <input
+                name="weightUom"
+                value={form.weightUom}
+                onChange={handleChange}
+                className="border w-full px-3 py-2 rounded"
+              />
+            </div>
+
             <div>
               <label>Rate</label>
               <input
                 name="rate"
+                type="number"
                 value={form.rate}
                 onChange={handleChange}
-                type="number"
                 className="border w-full px-3 py-2 rounded"
               />
             </div>
+
             <div>
               <label>Rate On</label>
               <input
@@ -438,37 +354,41 @@ export default function ConsignmentForm() {
             </div>
           </div>
 
-          <div>
-            <label>Freight Charges</label>
-            <input
-              name="freightCharges"
-              value={form.freightCharges}
-              onChange={handleChange}
-              type="number"
-              className="border w-full px-3 py-2 rounded"
-            />
+          {/* VEHICLE / DRIVER / FREIGHT */}
+          <div className="grid grid-cols-3 gap-3">
+            <div>
+              <label>Freight Charges</label>
+              <input
+                name="freightCharges"
+                type="number"
+                value={form.freightCharges}
+                onChange={handleChange}
+                className="border w-full px-3 py-2 rounded"
+              />
+            </div>
+
+            <div>
+              <label>Vehicle No</label>
+              <input
+                name="vehicleNo"
+                value={form.vehicleNo}
+                onChange={handleChange}
+                className="border w-full px-3 py-2 rounded"
+              />
+            </div>
+
+            <div>
+              <label>Driver Name</label>
+              <input
+                name="driverName"
+                value={form.driverName}
+                onChange={handleChange}
+                className="border w-full px-3 py-2 rounded"
+              />
+            </div>
           </div>
 
-          <div>
-            <label>Vehicle No</label>
-            <input
-              name="vehicleNo"
-              value={form.vehicleNo}
-              onChange={handleChange}
-              className="border w-full px-3 py-2 rounded"
-            />
-          </div>
-
-          <div>
-            <label>Driver Name</label>
-            <input
-              name="driverName"
-              value={form.driverName}
-              onChange={handleChange}
-              className="border w-full px-3 py-2 rounded"
-            />
-          </div>
-
+          {/* REMARKS */}
           <div>
             <label>Remarks</label>
             <textarea
@@ -480,20 +400,20 @@ export default function ConsignmentForm() {
           </div>
 
           {/* BUTTONS */}
-          <div className="flex justify-between pt-4">
+          <div className="flex justify-between pt-3">
             <button
               type="button"
               onClick={() => navigate("/consignments")}
               className="px-4 py-2 rounded border"
             >
-              Back to List
+              Back
             </button>
 
             <button
               type="submit"
               className="px-6 py-2 rounded bg-blue-600 text-white"
             >
-              {editing ? "Update Consignment" : "Create Consignment"}
+              {editing ? "Update" : "Create"}
             </button>
           </div>
 

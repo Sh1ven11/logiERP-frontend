@@ -23,6 +23,7 @@ const CustomerContent = () => {
     setLoading(true);
     try {
       const data = await custApi.getCustomers(companyId);
+      console.log("Fetched customers:", data);
       setCustomers(data);
       setError(null);
     } catch (err) {
