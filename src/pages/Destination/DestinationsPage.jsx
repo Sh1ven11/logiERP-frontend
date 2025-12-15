@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 // *** IMPORTANT: Make sure you add an updateDestination function to your API file ***
 import { getDestinations, createDestination, updateDestination } from '../../api/destinationApi'; 
 import MainLayout from '../../layout/Mainlayout.jsx';
-import { Plus, X, Pencil } from 'lucide-react'; // Changed Trash2 to Pencil
+import { Plus, X, Pencil } from 'lucide-react';
 
 export default function DestinationsPage() {
   const [destinations, setDestinations] = useState([]);
@@ -13,7 +13,7 @@ export default function DestinationsPage() {
   const [showModal, setShowModal] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
   
-  const [formData, setFormData] = useState({ id: null, name: '' }); // Added 'id' for editing
+  const [formData, setFormData] = useState({ id: null, name: '' });
   const [formErrors, setFormErrors] = useState({});
   const [actionLoading, setActionLoading] = useState(false);
 
@@ -85,14 +85,13 @@ export default function DestinationsPage() {
     try {
         if (isEditMode) {
             // EDIT LOGIC
-            // Ensure ID is present for update
             if (!formData.id) throw new Error("Destination ID missing for update."); 
             
-            // Assuming your update API needs { id, name }
+            // Send only the required fields for the update (e.g., name)
             const { id, name } = formData;
             const updatedResult = await updateDestination(id, { name }); 
             
-            // Update state: map through the array and replace the old item with the new one
+            // Update state with the new result
             setDestinations(prev => 
                 prev.map(dest => dest.id === id ? updatedResult : dest)
             );
@@ -101,7 +100,11 @@ export default function DestinationsPage() {
 
         } else {
             // CREATE LOGIC
-            const createdResult = await createDestination(formData);
+            // 💥 FIX: Destructure to exclude 'id' from the payload. 
+            // Sending 'id: null' causes the 400 Bad Request error.
+            const { name } = formData;
+            
+            const createdResult = await createDestination({ name }); // Send clean object: { name: "..." }
             
             // Update state: Prepend the new item to the list
             setDestinations(prev => [createdResult, ...prev]); 
@@ -111,7 +114,9 @@ export default function DestinationsPage() {
 
         closeModal();
     } catch (err) {
-      alert(`Error: ${isEditMode ? 'Failed to update' : 'Failed to create'} destination. ${err.message || ''}`);
+      // Improved error logging to catch the detailed error message from Axios
+      const errorMessage = err.response?.data?.message || err.message || '';
+      alert(`Error: ${isEditMode ? 'Failed to update' : 'Failed to create'} destination. ${errorMessage}`);
     } finally {
       setActionLoading(false);
     }
@@ -156,7 +161,7 @@ export default function DestinationsPage() {
                     <td className="border p-3 text-sm">{dest.name}</td>
                     <td className="border p-3">
                       <div className="flex gap-2 justify-center">
-                        {/* 1. Only Edit button remains */}
+                        {/* Edit button */}
                         <button
                           onClick={() => openEditModal(dest)}
                           className="text-indigo-600 hover:text-indigo-800 transition p-1 rounded hover:bg-indigo-50"
@@ -164,7 +169,6 @@ export default function DestinationsPage() {
                         >
                           <Pencil size={18} />
                         </button>
-                        {/* 2. Delete button and logic has been REMOVED */}
                       </div>
                     </td>
                   </tr>
@@ -231,8 +235,6 @@ export default function DestinationsPage() {
           </div>
         </div>
       )}
-
-      {/* 3. Delete Confirmation Modal has been REMOVED */}
     </MainLayout>
   );
 }
