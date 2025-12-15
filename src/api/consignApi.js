@@ -48,7 +48,6 @@ export const createConsignment = async (data) => {
     consigneeId: Number(data.consigneeId),
     fromDestinationId: Number(data.fromDestinationId),
     toDestinationId: Number(data.toDestinationId),
-    brokerId: data.brokerId ? Number(data.brokerId) : null,
   };
 
   const res = await axiosClient.post("/consignments", payload);
@@ -68,7 +67,6 @@ export const updateConsignment = async (id, data) => {
     consigneeId: Number(data.consigneeId),
     fromDestinationId: Number(data.fromDestinationId),
     toDestinationId: Number(data.toDestinationId),
-    brokerId: data.brokerId ? Number(data.brokerId) : null,
   };
 
   const res = await axiosClient.patch(`/consignments/${id}`, payload);

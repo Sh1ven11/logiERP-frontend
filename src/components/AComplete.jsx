@@ -16,9 +16,17 @@ import { Loader2, Search } from "lucide-react";
 export default function AAutocomplete({
   fetchFunction,
   onSelect,
-  renderOption,
+
+  // ✅ DEFAULT renderOption (IMPORTANT FIX)
+  renderOption = (item) => (
+    <div className="text-sm">
+      {item?.companyName || item?.name || item?.label || "Unnamed"}
+    </div>
+  ),
+
   getOptionLabel = (item) =>
-    item?.label || item?.name || item?.companyName || "",
+    item?.companyName || item?.name || item?.label || "",
+
   placeholder = "Search...",
   initialSearchValue = "",
   minChars = 2,
@@ -31,7 +39,7 @@ export default function AAutocomplete({
   const componentRef = useRef(null);
 
   // --------------------------------------------------
-  // Debounced Fetch Logic (NO dropdown dependency)
+  // Debounced Fetch Logic
   // --------------------------------------------------
   const debouncedFetch = useCallback(
     async (query) => {
