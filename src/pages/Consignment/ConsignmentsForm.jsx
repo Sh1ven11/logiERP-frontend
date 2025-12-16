@@ -1,304 +1,284 @@
-import React, { useState, useEffect, useContext } from "react";
-import { useNavigate, useParams } from "react-router-dom";
-import { SettingsContext } from "../../context/SettingsContext.jsx";
-
-import {
-  createConsignment,
-  updateConsignment,
-  getConsignmentById
-} from "../../api/consignApi.js";
-
-import { getCustomersByName } from "../../api/custApi.js";
-import { getDestinationsByName } from "../../api/destinationApi.js";
-
-import AAutocomplete from "../../components/Acomplete.jsx";
 import MainLayout from "../../layout/Mainlayout.jsx";
+import { useContext, useEffect, useState } from "react";
+import { SettingsContext } from "../../context/SettingsContext.jsx";
+import { createLorryHire, updateLorryHire, getLorryHire } from "../../api/lorryHireApi.js";
+import { getLorryOwnersByName } from "../../api/lorryOwnerApi.js";
+import { getBrokersByName } from "../../api/brokerApi.js";
+import { getDestinationsByName } from "../../api/destinationApi.js";
+import AAutocomplete from "../../components/Acomplete.jsx";
+import ConsignmentSelector from "../../components/ConsignSelector.jsx";
+import { useParams, useNavigate } from "react-router-dom";
 
-export default function ConsignmentForm() {
-  const { id } = useParams();
-  const editing = Boolean(id);
-
-  const { selectedCompany, selectedFinancialYear } =
+export default function CreateLorryHire() {
+  const { selectedCompany, selectedBranch, selectedFinancialYear } =
     useContext(SettingsContext);
+
+  const { id } = useParams();
   const navigate = useNavigate();
+  const isEditMode = !!id;
+  const today = new Date().toISOString().slice(0, 10);
 
-  // --------------------------------------------------
-  // FORM STATE
-  // --------------------------------------------------
   const [form, setForm] = useState({
-    cnNumber: "",
-    date: "",
+    challanNumber: "",
+    challanDate: today,
+    lorryHireDate: today,
 
-    consignorId: "",
-    consigneeId: "",
-    billedToId: "",
+    vehicleNo: "",
+    driverName: "",
+    driverLicenseNo: "",
+    remarks: "",
 
-    fromDestinationId: "",
-    toDestinationId: "",
+    lorryOwnerId: "",
+    brokerId: "",
+    destinationId: "",
 
-    packages: "",
-    packageUom: "",
-    contents: "",
-
-    netWeight: "",
-    grossWeight: "",
-    chargeWeight: "",
-    weightUom: "",
+    totalPackages: "",
+    totalWeight: "",
 
     rate: "",
-    rateOn: "",
-    remarks: ""
+    lorryHire: "",
+    advancePaid: "",
+
+    loadingCharges: "",
+    unloadingCharges: "",
+    dieselAdvance: "",
+
+    gstApplicable: false,
+    gstAmount: "",
+
+    tdsApplicable: "no",
+    tdsRate: "",     // UI-only
+    panNumber: "",   // UI-only
   });
 
+  const [selectedConsignments, setSelectedConsignments] = useState([]);
+  
   // --------------------------------------------------
-  // AUTOCOMPLETE DISPLAY STATE
-  // --------------------------------------------------
-  const [search, setSearch] = useState({
-    consignor: "",
-    consignee: "",
-    billedTo: "",
-    fromDest: "",
-    toDest: ""
-  });
-
-  // --------------------------------------------------
-  // DEFAULT DATE
+  // ⭐ FIX: LOAD EDIT DATA useEffect
   // --------------------------------------------------
   useEffect(() => {
-    if (!editing && selectedFinancialYear) {
-      setForm(f => ({
-        ...f,
-        date: selectedFinancialYear.startDate.slice(0, 10)
-      }));
+    async function loadData() {
+      if (!isEditMode) return;
+
+      try {
+        // Fetch the existing Lorry Hire record by ID
+        // Note: Assumes getLorryHire(id) returns the full record including relations
+        const data = await getLorryHire(id); 
+
+        // 1. Populate the main form state
+        setForm({
+          // Simple string fields
+          challanNumber: data.challanNumber || "",
+          vehicleNo: data.vehicleNo || "",
+          driverName: data.driverName || "",
+          driverLicenseNo: data.driverLicenseNo || "",
+          remarks: data.remarks || "",
+
+          // Dates (format to YYYY-MM-DD for input type="date")
+          challanDate: data.challanDate?.slice(0, 10) || today,
+          lorryHireDate: data.lorryHireDate?.slice(0, 10) || today,
+
+          // IDs (must be strings for the form state)
+          lorryOwnerId: data.lorryOwnerId?.toString() || "",
+          brokerId: data.brokerId?.toString() || "",
+          destinationId: data.destinationId?.toString() || "",
+
+          // Numeric fields (stored as strings for input value)
+          totalPackages: data.totalPackages?.toString() || "",
+          totalWeight: data.totalWeight?.toString() || "",
+          rate: data.rate?.toString() || "",
+          lorryHire: data.lorryHire?.toString() || "",
+          advancePaid: data.advancePaid?.toString() || "",
+          loadingCharges: data.loadingCharges?.toString() || "",
+          unloadingCharges: data.unloadingCharges?.toString() || "",
+          dieselAdvance: data.dieselAdvance?.toString() || "",
+          gstAmount: data.gstAmount?.toString() || "",
+          
+          // Boolean/Select fields
+          gstApplicable: data.gstApplicable || false,
+          tdsApplicable: data.tdsApplicable || "no", 
+
+          // UI-only/Derived fields
+          tdsRate: data.tdsPercent?.toString() || "", // tdsPercent is mapped back to tdsRate
+          panNumber: data.panCardUsed || "", // panCardUsed is mapped back to panNumber
+        });
+
+        // 2. Populate the Consignment Selector state
+        // Assumes data.consignments is an array of relationship objects 
+        // that must be mapped to the actual consignment objects (c.consignment)
+        if (data.consignments) {
+            setSelectedConsignments(data.consignments.map(c => c.consignment));
+        }
+
+      } catch (error) {
+        console.error("Failed to load Lorry Hire Challan:", error);
+      }
     }
-  }, [editing, selectedFinancialYear]);
 
+    loadData();
+  }, [id, isEditMode]); // Dependencies: re-run if ID or editing mode changes
+  
   // --------------------------------------------------
-  // LOAD EDIT DATA
+  // END FIX
   // --------------------------------------------------
-  useEffect(() => {
-    async function load() {
-      if (!editing) return;
 
-      const data = await getConsignmentById(id);
 
-      setForm({
-        cnNumber: data.cnNumber,
-        date: data.date?.slice(0, 10),
+  const calculatedHire = Number(form.rate || 0) * Number(form.totalWeight || 0);
+  const tdsAmount =
+    form.tdsApplicable !== "no" && form.tdsRate
+      ? (Number(form.lorryHire || 0) * Number(form.tdsRate)) / 100
+      : 0;
 
-        consignorId: data.consignorId,
-        consigneeId: data.consigneeId,
-        billedToId: data.billedToId,
+  const totalAmount =
+    Number(form.lorryHire || 0) +
+    Number(form.loadingCharges || 0) +
+    Number(form.unloadingCharges || 0) +
+    Number(form.dieselAdvance || 0) +
+    (form.gstApplicable ? Number(form.gstAmount || 0) : 0);
 
-        fromDestinationId: data.fromDestinationId,
-        toDestinationId: data.toDestinationId,
+  const balancePayable =
+    totalAmount - tdsAmount - Number(form.advancePaid || 0);
 
-        packages: data.packages ?? "",
-        packageUom: data.packageUom ?? "",
-        contents: data.contents ?? "",
-
-        netWeight: data.netWeight ?? "",
-        grossWeight: data.grossWeight ?? "",
-        chargeWeight: data.chargeWeight ?? "",
-        weightUom: data.weightUom ?? "",
-
-        rate: data.rate ?? "",
-        rateOn: data.rateOn ?? "",
-        remarks: data.remarks ?? ""
-      });
-
-      setSearch({
-        consignor: data.consignor?.companyName || "",
-        consignee: data.consignee?.companyName || "",
-        billedTo: data.billedTo?.companyName || "",
-        fromDest: data.fromDestination?.name || "",
-        toDest: data.toDestination?.name || ""
-      });
-    }
-
-    load();
-  }, [editing, id]);
-
-  // --------------------------------------------------
-  // INPUT HANDLER
-  // --------------------------------------------------
-  const handleChange = e => {
-    const { name, value } = e.target;
-    setForm(f => ({ ...f, [name]: value }));
+  const handleChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    setForm((f) => ({ ...f, [name]: type === "checkbox" ? checked : value }));
   };
 
-  // --------------------------------------------------
-  // SUBMIT
-  // --------------------------------------------------
-  const handleSubmit = async e => {
-    e.preventDefault();
+  const handleSubmit = async () => {
+    const cleaned = { ...form };
 
-    if (!form.consignorId || !form.consigneeId || !form.billedToId) {
-      alert("Consignor, Consignee and Billed To are required");
-      return;
-    }
+    [
+      "lorryOwnerId",
+      "brokerId",
+      "destinationId",
+      "totalPackages",
+      "totalWeight",
+      "rate",
+      "lorryHire",
+      "advancePaid",
+      "loadingCharges",
+      "unloadingCharges",
+      "dieselAdvance",
+      "gstAmount",
+    ].forEach((f) => {
+      cleaned[f] = cleaned[f] ? Number(cleaned[f]) : undefined;
+    });
 
-    const toNumOrNull = v =>
-      v === "" || v === null || v === undefined ? null : Number(v);
+    // remove UI-only fields
+    delete cleaned.tdsRate;
+    delete cleaned.panNumber;
 
     const payload = {
-      ...form,
-      companyId: Number(selectedCompany.id),
-      branchId: 1,
-      financialYearId: Number(selectedFinancialYear.id),
-
-      consignorId: Number(form.consignorId),
-      consigneeId: Number(form.consigneeId),
-      billedToId: Number(form.billedToId),
-
-      fromDestinationId: Number(form.fromDestinationId),
-      toDestinationId: Number(form.toDestinationId),
-
-      packages: toNumOrNull(form.packages),
-      netWeight: toNumOrNull(form.netWeight),
-      grossWeight: toNumOrNull(form.grossWeight),
-      chargeWeight: toNumOrNull(form.chargeWeight),
-      rate: toNumOrNull(form.rate)
+      ...cleaned,
+      tdsPercent: form.tdsRate ? Number(form.tdsRate) : undefined,
+      panCardUsed: form.panNumber || undefined,
+      companyId: selectedCompany.id,
+      branchId: selectedBranch.id,
+      financialYearId: selectedFinancialYear.id,
+      consignmentIds: selectedConsignments.map((c) => c.id),
     };
 
-    if (editing) {
-      await updateConsignment(id, payload);
-    } else {
-      await createConsignment(payload);
-    }
+    isEditMode
+      ? await updateLorryHire(id, payload)
+      : await createLorryHire(payload);
 
-    navigate("/consignments");
+    navigate("/lorry-hire");
   };
 
-  // --------------------------------------------------
-  // UI
-  // --------------------------------------------------
   return (
     <MainLayout>
-      <div className="p-3 max-w-6xl mx-auto">
-        <h1 className="text-lg font-semibold mb-3">
-          {editing ? "Edit Consignment" : "New Consignment"}
+      <div className="p-6 space-y-6 max-w-6xl mx-auto">
+        <h1 className="text-xl font-bold">
+          {isEditMode ? "Edit" : "Create"} Lorry Hire Challan
         </h1>
 
-        <form onSubmit={handleSubmit} className="space-y-3 text-sm">
-          <div className="grid grid-cols-2 gap-4">
+        {/* BASIC */}
+        <div className="grid grid-cols-3 gap-4">
+          <input name="challanNumber" value={form.challanNumber} onChange={handleChange} className="border p-2" placeholder="Challan No" />
+          <input type="date" name="challanDate" value={form.challanDate} onChange={handleChange} className="border p-2" />
+          <input type="date" name="lorryHireDate" value={form.lorryHireDate} onChange={handleChange} className="border p-2" />
 
-            {/* LEFT COLUMN */}
-            <div className="space-y-3">
-              <div className="grid grid-cols-2 gap-3">
-                <input
-                  name="cnNumber"
-                  value={form.cnNumber}
-                  onChange={handleChange}
-                  placeholder="CN Number"
-                  className="border p-2 rounded"
-                />
-                <input
-                  type="date"
-                  name="date"
-                  value={form.date}
-                  onChange={handleChange}
-                  className="border p-2 rounded"
-                />
-              </div>
+          <input name="vehicleNo" value={form.vehicleNo} onChange={handleChange} className="border p-2" placeholder="Vehicle No" />
+          <input name="driverName" value={form.driverName} onChange={handleChange} className="border p-2" placeholder="Driver Name" />
+          <input name="driverLicenseNo" value={form.driverLicenseNo} onChange={handleChange} className="border p-2" placeholder="Driver License No" />
+        </div>
 
-              {/* CONSIGNOR */}
-              <AAutocomplete
-                fetchFunction={q =>
-                  getCustomersByName(selectedCompany.id, q)
-                }
-                onSelect={c =>
-                  setForm(f => ({ ...f, consignorId: c?.id || "" }))
-                }
-                initialSearchValue={search.consignor}
-                placeholder="Consignor"
-              />
+        {/* PARTIES */}
+        <div className="grid grid-cols-3 gap-4">
+          <AAutocomplete
+            fetchFunction={(q) => getLorryOwnersByName(selectedCompany.id, q)}
+            placeholder="Lorry Owner"
+            // The value is set by the state update in useEffect
+            // If AAutocomplete needs explicit initial text, you will need a 'search' state.
+            onSelect={(o) => setForm((f) => ({ ...f, lorryOwnerId: o?.id || "" }))}
+          />
+          <AAutocomplete
+            fetchFunction={(q) => getBrokersByName(selectedCompany.id, q)}
+            placeholder="Broker"
+            onSelect={(b) => setForm((f) => ({ ...f, brokerId: b?.id || "" }))}
+          />
+          <AAutocomplete
+            fetchFunction={getDestinationsByName}
+            placeholder="Destination"
+            onSelect={(d) => setForm((f) => ({ ...f, destinationId: d?.id || "" }))}
+          />
+        </div>
 
-              {/* CONSIGNEE (AUTO SET BILLED TO) */}
-              <AAutocomplete
-                fetchFunction={q =>
-                  getCustomersByName(selectedCompany.id, q)
-                }
-                onSelect={c =>
-                  setForm(f => ({
-                    ...f,
-                    consigneeId: c?.id || "",
-                    billedToId: c?.id || ""
-                  }))
-                }
-                initialSearchValue={search.consignee}
-                placeholder="Consignee"
-              />
+        {/* CONSIGNMENTS */}
+        <ConsignmentSelector
+          value={selectedConsignments}
+          onChange={setSelectedConsignments}
+          onTotalsChange={(t) =>
+            setForm((f) => ({
+              ...f,
+              totalPackages: t.totalPkgs,
+              totalWeight: t.totalWt,
+              lorryHire: f.lorryHire || calculatedHire,
+            }))
+          }
+        />
 
-              {/* 🔹 BILLED TO (EDITABLE) */}
-              <div>
-                <label className="text-xs font-medium text-gray-600">
-                  Billed To
-                </label>
-                <AAutocomplete
-                  fetchFunction={q =>
-                    getCustomersByName(selectedCompany.id, q)
-                  }
-                  onSelect={c =>
-                    setForm(f => ({ ...f, billedToId: c?.id || "" }))
-                  }
-                  initialSearchValue={search.billedTo}
-                  placeholder="Billing Customer"
-                />
-                <p className="text-[11px] text-gray-500 mt-1">
-                  Defaulted to Consignee, can be changed
-                </p>
-              </div>
+        {/* RATE */}
+        <div className="grid grid-cols-3 gap-4">
+          <input name="rate" value={form.rate} onChange={handleChange} className="border p-2" placeholder="Rate" />
+          <input readOnly value={calculatedHire.toFixed(2)} className="border p-2 bg-gray-100" />
+          <input name="lorryHire" value={form.lorryHire} onChange={handleChange} className="border p-2" placeholder="Final Hire" />
+        </div>
 
-              {/* DESTINATIONS */}
-              <div className="grid grid-cols-2 gap-3">
-                <AAutocomplete
-                  fetchFunction={q => getDestinationsByName(q)}
-                  onSelect={d =>
-                    setForm(f => ({ ...f, fromDestinationId: d?.id || "" }))
-                  }
-                  initialSearchValue={search.fromDest}
-                  placeholder="From"
-                />
-                <AAutocomplete
-                  fetchFunction={q => getDestinationsByName(q)}
-                  onSelect={d =>
-                    setForm(f => ({ ...f, toDestinationId: d?.id || "" }))
-                  }
-                  initialSearchValue={search.toDest}
-                  placeholder="To"
-                />
-              </div>
+        {/* CHARGES */}
+        <div className="grid grid-cols-3 gap-4">
+          <input name="loadingCharges" value={form.loadingCharges} onChange={handleChange} className="border p-2" placeholder="Loading" />
+          <input name="unloadingCharges" value={form.unloadingCharges} onChange={handleChange} className="border p-2" placeholder="Unloading" />
+          <input name="dieselAdvance" value={form.dieselAdvance} onChange={handleChange} className="border p-2" placeholder="Diesel" />
+        </div>
+
+        {/* TDS */}
+        <div className="border p-4 rounded">
+          <select name="tdsApplicable" value={form.tdsApplicable} onChange={handleChange} className="border p-2">
+            <option value="no">No TDS</option>
+            <option value="lorryOwner">On Owner</option>
+            <option value="broker">On Broker</option>
+            <option value="yes">Manual</option>
+          </select>
+
+          {form.tdsApplicable !== "no" && (
+            <div className="grid grid-cols-2 gap-4 mt-3">
+              <input name="tdsRate" value={form.tdsRate} onChange={handleChange} className="border p-2" placeholder="TDS %" />
+              <input name="panNumber" value={form.panNumber} onChange={handleChange} className="border p-2" placeholder="PAN" />
             </div>
+          )}
+        </div>
 
-            {/* RIGHT COLUMN */}
-            <div className="space-y-3">
-              <div className="grid grid-cols-3 gap-3">
-                <input name="netWeight" type="number" placeholder="Net Wt" value={form.netWeight} onChange={handleChange} className="border p-2 rounded" />
-                <input name="grossWeight" type="number" placeholder="Gross Wt" value={form.grossWeight} onChange={handleChange} className="border p-2 rounded" />
-                <input name="chargeWeight" type="number" placeholder="Charge Wt" value={form.chargeWeight} onChange={handleChange} className="border p-2 rounded" />
-              </div>
+        {/* SUMMARY */}
+        <div className="bg-green-50 p-4 rounded">
+          <div>Total: ₹{totalAmount.toFixed(2)}</div>
+          <div>TDS: ₹{tdsAmount.toFixed(2)}</div>
+          <div className="font-bold">Balance: ₹{balancePayable.toFixed(2)}</div>
+        </div>
 
-              <div className="grid grid-cols-3 gap-3">
-                <input name="weightUom" placeholder="Wt UOM" value={form.weightUom} onChange={handleChange} className="border p-2 rounded" />
-                <input name="rate" type="number" placeholder="Rate" value={form.rate} onChange={handleChange} className="border p-2 rounded" />
-                <input name="rateOn" placeholder="Rate On" value={form.rateOn} onChange={handleChange} className="border p-2 rounded" />
-              </div>
-
-              <textarea name="contents" placeholder="Contents" rows={2} value={form.contents} onChange={handleChange} className="border p-2 rounded" />
-              <textarea name="remarks" placeholder="Remarks" rows={2} value={form.remarks} onChange={handleChange} className="border p-2 rounded" />
-            </div>
-          </div>
-
-          <div className="flex justify-between pt-4 border-t">
-            <button type="button" onClick={() => navigate("/consignments")} className="border px-4 py-2 rounded">
-              Back
-            </button>
-            <button type="submit" className="bg-blue-600 text-white px-6 py-2 rounded">
-              {editing ? "Update" : "Create"}
-            </button>
-          </div>
-        </form>
+        <button onClick={handleSubmit} className="bg-blue-600 text-white px-6 py-2 rounded">
+          {isEditMode ? "Update" : "Create"}
+        </button>
       </div>
     </MainLayout>
   );

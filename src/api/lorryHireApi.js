@@ -17,6 +17,7 @@ export const getLorryHire = async (id) => {
 
 export const updateLorryHire = async (id, data) => {
   const res = await axiosClient.patch(`/lorry-hire/${id}`, data);
+  console.log("Updated Lorry Hire:", res.data);
   return res.data;
 };
 
