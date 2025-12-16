@@ -1,14 +1,16 @@
-import React, { useEffect, useState, useContext, useCallback } from 'react'; // ADDED useContext and useCallback
-import { SettingsContext } from '../../context/SettingsContext.jsx'; // IMPORTED SettingsContext
-import { getBrokers, createBroker, updateBroker, deleteBroker } from '../../api/brokerApi.js';
+import React, { useEffect, useState, useContext, useCallback } from 'react';
+import { SettingsContext } from '../../context/SettingsContext.jsx';
+import { getBrokers, createBroker, updateBroker, deleteBroker, getBrokersByName } from '../../api/brokerApi.js';
 import MainLayout from '../../layout/Mainlayout.jsx';
-import { Trash2, Edit, Plus, X } from 'lucide-react';
+import { Trash2, Edit, Plus, X, Search } from 'lucide-react';
 
 export default function BrokersPage() {
   // 1. CONTEXT INTEGRATION: Retrieve selectedCompany
   const { selectedCompany } = useContext(SettingsContext); 
   
   const [brokers, setBrokers] = useState([]);
+  const [filteredBrokers, setFilteredBrokers] = useState([]);
+  const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [showModal, setShowModal] = useState(false);
@@ -28,10 +30,21 @@ export default function BrokersPage() {
   const [deleteConfirm, setDeleteConfirm] = useState(null);
   const [actionLoading, setActionLoading] = useState(false);
 
+  // Filter brokers based on search query
+  const filterBrokers = useCallback((brokers, query) => {
+    if (!query) return brokers;
+    const lowerQuery = query.toLowerCase();
+    return brokers.filter(broker => 
+      (broker.name && broker.name.toLowerCase().includes(lowerQuery)) ||
+      (broker.city && broker.city.toLowerCase().includes(lowerQuery))
+    );
+  }, []);
+
   // 3. UPDATED: Data fetching uses useCallback and selectedCompany context
-  const loadBrokers = useCallback(async () => {
+  const loadBrokers = useCallback(async (searchQuery = '') => {
     if (!selectedCompany?.id) {
         setBrokers([]);
+        setFilteredBrokers([]);
         setLoading(false);
         setError("Please select a company to view brokers.");
         return;
@@ -40,9 +53,15 @@ export default function BrokersPage() {
     setLoading(true);
     setError(null);
     try {
-      // NOTE: getBrokers API function must be updated to accept companyId
-      const data = await getBrokers(selectedCompany.id); 
-      setBrokers(Array.isArray(data) ? data : []);
+      let data;
+      if (searchQuery) {
+        data = await getBrokersByName(selectedCompany.id, searchQuery);
+      } else {
+        data = await getBrokers(selectedCompany.id);
+      }
+      const brokersData = Array.isArray(data) ? data : [];
+      setBrokers(brokersData);
+      setFilteredBrokers(filterBrokers(brokersData, searchQuery));
     } catch (e) {
       setError(e.message || "Failed to load brokers.");
     } finally {
@@ -50,10 +69,23 @@ export default function BrokersPage() {
     }
   }, [selectedCompany?.id]); // DEPENDENCY: Rerun when selectedCompany changes
 
-  // 4. UPDATED: useEffect now depends on loadBrokers (which depends on selectedCompany)
+  // 4. UPDATED: useEffect now depends on loadBrokers  // 4. EFFECT: Load brokers when selectedCompany changes
   useEffect(() => {
-    loadBrokers();
-  }, [loadBrokers]); 
+    loadBrokers(searchQuery);
+  }, [loadBrokers, searchQuery]);
+
+  // Handle search input change
+  const handleSearchChange = (e) => {
+    const query = e.target.value;
+    setSearchQuery(query);
+    setFilteredBrokers(filterBrokers(brokers, query));
+  };
+
+  // Clear search
+  const clearSearch = () => {
+    setSearchQuery('');
+    setFilteredBrokers(brokers);
+  }; 
 
   function validateForm() {
     const errors = {};
@@ -169,35 +201,72 @@ export default function BrokersPage() {
 
   return (
     <MainLayout>
-      <div className="p-4 md:p-6">
-        {/* ... (Header and New Broker Button remains the same) ... */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-          <h1 className="text-2xl md:text-3xl font-semibold">Brokers ({selectedCompany?.name || 'No Company Selected'})</h1>
-          <button
-            onClick={openCreateModal}
-            className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition w-full sm:w-auto justify-center"
-          >
-            <Plus size={20} /> New Broker
-          </button>
+      <div className="p-6">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+          <h1 className="text-2xl font-bold text-gray-800">Brokers</h1>
+          <div className="flex flex-col sm:flex-row w-full md:w-auto gap-4">
+            <div className="relative flex-1 max-w-md">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <Search className="h-5 w-5 text-gray-400" />
+              </div>
+              <input
+                type="text"
+                placeholder="Search by name or city..."
+                className="block w-full pl-10 pr-10 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                value={searchQuery}
+                onChange={handleSearchChange}
+              />
+              {searchQuery && (
+                <button
+                  onClick={clearSearch}
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                >
+                  <X className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+                </button>
+              )}
+            </div>
+            <button
+              onClick={openCreateModal}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md flex items-center justify-center gap-2 whitespace-nowrap"
+            >
+              <Plus size={18} />
+              Add New Broker
+            </button>
+          </div>
         </div>
 
         {error && (
-          <div className="bg-red-100 text-red-800 p-4 rounded-lg mb-4 flex flex-col sm:flex-row items-start sm:items-center gap-2">
-            <span>{error}</span>
-            <button
-              onClick={loadBrokers}
-              className="bg-red-800 text-white px-3 py-1 rounded hover:bg-red-900 text-sm"
-            >
-              Retry
-            </button>
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
+            <strong className="font-bold">Error: </strong>
+            <span className="block sm:inline">{error}</span>
           </div>
         )}
 
         {loading ? (
-          <div className="text-center py-10">Loading brokers...</div>
-        ) : brokers.length === 0 && selectedCompany?.id ? (
-          <div className="text-center py-10 text-gray-500">
-            No brokers found for {selectedCompany.name}. Create one to get started.
+          <div className="flex justify-center items-center h-64">
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+          </div>
+        ) : filteredBrokers.length === 0 ? (
+          <div className="text-center py-12">
+            <p className="text-gray-500 mb-4">
+              {searchQuery ? 'No brokers match your search.' : 'No brokers found.'}
+            </p>
+            {searchQuery ? (
+              <button
+                onClick={clearSearch}
+                className="text-blue-600 hover:text-blue-800 px-4 py-2 rounded-md inline-flex items-center gap-2"
+              >
+                Clear search
+              </button>
+            ) : (
+              <button
+                onClick={openCreateModal}
+                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md inline-flex items-center gap-2"
+              >
+                <Plus size={16} />
+                Add Your First Broker
+              </button>
+            )}
           </div>
         ) : (
           <div className="overflow-x-auto bg-white rounded-lg shadow border">
@@ -213,8 +282,8 @@ export default function BrokersPage() {
                   <th className="border p-3 text-center text-sm font-semibold">Actions</th>
                 </tr>
               </thead>
-              <tbody>
-                {brokers.map(broker => (
+              <tbody className="bg-white divide-y divide-gray-200">
+                {filteredBrokers.map((broker) => (
                   <tr key={broker.id} className="border-b hover:bg-gray-50">
                     <td className="border p-3 text-sm">{broker.name}</td>
                     <td className="border p-3 text-sm">{broker.address}</td>
